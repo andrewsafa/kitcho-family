@@ -9,6 +9,8 @@ import {
   type InsertAdmin,
   type SpecialEvent,
   type InsertSpecialEvent,
+  type SpecialOffer,
+  type InsertSpecialOffer,
   calculateLevel,
   calculatePointsWithMultiplier
 } from "@shared/schema";
@@ -32,6 +34,10 @@ export interface IStorage {
   getEvent(id: number): Promise<SpecialEvent | undefined>;
   createEvent(event: InsertSpecialEvent): Promise<SpecialEvent>;
   updateEventStatus(id: number, active: boolean): Promise<SpecialEvent>;
+  // Special Offers methods
+  getSpecialOffers(level: string): Promise<SpecialOffer[]>;
+  createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer>;
+  updateSpecialOfferStatus(id: number, active: boolean): Promise<SpecialOffer>;
 }
 
 export class MemStorage implements IStorage {
@@ -40,11 +46,13 @@ export class MemStorage implements IStorage {
   private benefits: Map<number, LevelBenefit>;
   private admins: Map<number, Admin>;
   private events: Map<number, SpecialEvent>;
+  private offers: Map<number, SpecialOffer>;
   private currentCustomerId: number;
   private currentTransactionId: number;
   private currentBenefitId: number;
   private currentAdminId: number;
   private currentEventId: number;
+  private currentOfferId: number;
 
   constructor() {
     this.customers = new Map();
@@ -52,11 +60,13 @@ export class MemStorage implements IStorage {
     this.benefits = new Map();
     this.admins = new Map();
     this.events = new Map();
+    this.offers = new Map();
     this.currentCustomerId = 1;
     this.currentTransactionId = 1;
     this.currentBenefitId = 1;
     this.currentAdminId = 1;
     this.currentEventId = 1;
+    this.currentOfferId = 1;
   }
 
   async getCustomer(id: number): Promise<Customer | undefined> {
@@ -202,6 +212,38 @@ export class MemStorage implements IStorage {
     const updatedEvent: SpecialEvent = { ...event, active };
     this.events.set(id, updatedEvent);
     return updatedEvent;
+  }
+
+  async getSpecialOffers(level: string): Promise<SpecialOffer[]> {
+    const now = new Date();
+    return Array.from(this.offers.values())
+      .filter(offer => 
+        offer.level === level && 
+        offer.active && 
+        offer.validUntil > now
+      )
+      .sort((a, b) => b.validUntil.getTime() - a.validUntil.getTime());
+  }
+
+  async createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer> {
+    const id = this.currentOfferId++;
+    const newOffer: SpecialOffer = {
+      id,
+      ...offer,
+      active: true
+    };
+    this.offers.set(id, newOffer);
+    return newOffer;
+  }
+
+  async updateSpecialOfferStatus(id: number, active: boolean): Promise<SpecialOffer> {
+    const offer = this.offers.get(id);
+    if (!offer) {
+      throw new Error("Special offer not found");
+    }
+    const updatedOffer: SpecialOffer = { ...offer, active };
+    this.offers.set(id, updatedOffer);
+    return updatedOffer;
   }
 }
 

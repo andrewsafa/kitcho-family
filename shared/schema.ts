@@ -42,6 +42,15 @@ export const specialEvents = pgTable("special_events", {
   active: boolean("active").notNull().default(true),
 });
 
+export const specialOffers = pgTable("special_offers", {
+  id: serial("id").primaryKey(),
+  level: text("level").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  validUntil: timestamp("valid_until").notNull(),
+  active: boolean("active").notNull().default(true),
+});
+
 export const insertAdminSchema = createInsertSchema(admins).pick({
   username: true,
   password: true,
@@ -81,6 +90,15 @@ export const insertSpecialEventSchema = createInsertSchema(specialEvents).pick({
   endDate: z.string().transform(str => new Date(str)),
 });
 
+export const insertSpecialOfferSchema = createInsertSchema(specialOffers).pick({
+  level: true,
+  title: true,
+  description: true,
+  validUntil: true,
+}).extend({
+  validUntil: z.string().transform(str => new Date(str)),
+});
+
 export type Admin = typeof admins.$inferSelect;
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type Customer = typeof customers.$inferSelect;
@@ -91,6 +109,8 @@ export type LevelBenefit = typeof levelBenefits.$inferSelect;
 export type InsertLevelBenefit = z.infer<typeof insertLevelBenefitSchema>;
 export type SpecialEvent = typeof specialEvents.$inferSelect;
 export type InsertSpecialEvent = z.infer<typeof insertSpecialEventSchema>;
+export type SpecialOffer = typeof specialOffers.$inferSelect;
+export type InsertSpecialOffer = z.infer<typeof insertSpecialOfferSchema>;
 
 export const LOYALTY_LEVELS = {
   Bronze: { min: 0, max: 100000 },
