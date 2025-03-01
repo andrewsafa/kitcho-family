@@ -40,18 +40,25 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Create initial admin user
-  const scryptAsync = promisify(scrypt);
-  const salt = randomBytes(16).toString("hex");
-  const passwordBuf = (await scryptAsync("admin123", salt, 64)) as Buffer;
-  const hashedPassword = `${passwordBuf.toString("hex")}.${salt}`;
+  // Check if admin exists before creating
+  const existingAdmin = await storage.getAdminByUsername("admin");
 
-  await storage.createAdmin({
-    username: "admin",
-    password: hashedPassword
-  });
+  if (!existingAdmin) {
+    // Create initial admin user only if it doesn't exist
+    const scryptAsync = promisify(scrypt);
+    const salt = randomBytes(16).toString("hex");
+    const passwordBuf = (await scryptAsync("admin123", salt, 64)) as Buffer;
+    const hashedPassword = `${passwordBuf.toString("hex")}.${salt}`;
 
-  log("Created initial admin user (username: admin, password: admin123)");
+    await storage.createAdmin({
+      username: "admin",
+      password: hashedPassword
+    });
+
+    log("Created initial admin user (username: admin, password: admin123)");
+  } else {
+    log("Admin user already exists, skipping creation");
+  }
 
   const server = await registerRoutes(app);
 
