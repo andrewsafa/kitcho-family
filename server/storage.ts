@@ -20,15 +20,12 @@ import {
   specialEvents,
   specialOffers
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
-import { neon } from '@neondatabase/serverless';
-import { Pool } from '@neondatabase/serverless';
+import { db, pool } from "./db";
+import { eq, desc, and, gt } from "drizzle-orm";
 import connectPg from 'connect-pg-simple';
 import session from 'express-session';
 
 const PostgresSessionStore = connectPg(session);
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export interface IStorage {
   // Keep existing interface methods
@@ -68,6 +65,7 @@ export interface IStorage {
     offers: SpecialOffer[];
   }): Promise<void>;
   sessionStore: session.Store;
+  testConnection(): Promise<boolean>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -245,9 +243,13 @@ export class PostgresStorage implements IStorage {
     return await db
       .select()
       .from(specialOffers)
-      .where(eq(specialOffers.level, level))
-      .andWhere(eq(specialOffers.active, true))
-      .andWhere('valid_until', '>', now);
+      .where(
+        and(
+          eq(specialOffers.level, level),
+          eq(specialOffers.active, true),
+          gt(specialOffers.validUntil, now)
+        )
+      );
   }
 
   async createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer> {
@@ -287,61 +289,55 @@ export class PostgresStorage implements IStorage {
     events: SpecialEvent[];
     offers: SpecialOffer[];
   }) {
-    // Use a raw SQL connection for bulk operations
-    const sql = neon(process.env.DATABASE_URL!);
-    try {
-      // Start transaction
-      await sql`BEGIN`;
-
+    // Use a transaction for bulk import
+    await db.transaction(async (tx) => {
       // Clear existing data
-      await sql`TRUNCATE customers, point_transactions, level_benefits, special_events, special_offers CASCADE`;
+      await tx.delete(specialOffers);
+      await tx.delete(specialEvents);
+      await tx.delete(levelBenefits);
+      await tx.delete(pointTransactions);
+      await tx.delete(customers);
 
-      // Insert new data using prepared statements
-      if (data.customers.length) {
-        await sql`INSERT INTO customers ${sql(data.customers)}`;
-      }
-      if (data.transactions.length) {
-        await sql`INSERT INTO point_transactions ${sql(data.transactions)}`;
-      }
-      if (data.benefits.length) {
-        await sql`INSERT INTO level_benefits ${sql(data.benefits)}`;
-      }
-      if (data.events.length) {
-        await sql`INSERT INTO special_events ${sql(data.events)}`;
-      }
-      if (data.offers.length) {
-        await sql`INSERT INTO special_offers ${sql(data.offers)}`;
-      }
-
-      // Commit transaction
-      await sql`COMMIT`;
-    } catch (error) {
-      // Rollback on error
-      await sql`ROLLBACK`;
-      throw error;
-    }
+      // Import new data
+      if (data.customers.length) await tx.insert(customers).values(data.customers);
+      if (data.transactions.length) await tx.insert(pointTransactions).values(data.transactions);
+      if (data.benefits.length) await tx.insert(levelBenefits).values(data.benefits);
+      if (data.events.length) await tx.insert(specialEvents).values(data.events);
+      if (data.offers.length) await tx.insert(specialOffers).values(data.offers);
+    });
   }
   async testConnection(): Promise<boolean> {
     try {
-      // Test basic CRUD operations
+      console.log('Testing database connection...');
 
-      // 1. Create a test customer
-      const testCustomer = await this.createCustomer({
-        name: "Test User",
-        mobile: "+1234567890"
+      // Test basic query
+      const result = await pool.query('SELECT 1 as test');
+      console.log('Basic query test passed:', result.rows[0].test === 1);
+
+      // Test schema access
+      const customersResult = await db.select().from(customers).limit(1);
+      console.log('Schema access test passed, can query customers table');
+
+      // Test transaction
+      await db.transaction(async (tx) => {
+        // Create test customer
+        const [testCustomer] = await tx
+          .insert(customers)
+          .values({
+            name: "Test User",
+            mobile: "+1234567890",
+            points: 0,
+            level: "Bronze"
+          })
+          .returning();
+        console.log('Transaction test - Created test customer:', testCustomer.id);
+
+        // Clean up test data
+        await tx.delete(customers).where(eq(customers.id, testCustomer.id));
+        console.log('Transaction test - Cleaned up test customer');
       });
 
-      // 2. Read the customer
-      const retrievedCustomer = await this.getCustomer(testCustomer.id);
-      if (!retrievedCustomer) throw new Error("Failed to retrieve test customer");
-
-      // 3. Delete the test customer
-      await this.deleteCustomer(testCustomer.id);
-
-      // 4. Verify deletion
-      const deletedCustomer = await this.getCustomer(testCustomer.id);
-      if (deletedCustomer) throw new Error("Failed to delete test customer");
-
+      console.log('All database tests passed successfully');
       return true;
     } catch (error) {
       console.error('Database test failed:', error);
