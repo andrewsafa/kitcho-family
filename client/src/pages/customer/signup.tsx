@@ -32,7 +32,7 @@ export default function CustomerSignup() {
     },
     onSuccess: (data) => {
       toast({
-        title: "Welcome to our loyalty program!",
+        title: "Welcome to Kitcho Family!",
         description: "Your account has been created successfully."
       });
       navigate(`/dashboard/${data.mobile}`);
@@ -63,9 +63,9 @@ export default function CustomerSignup() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Gift className="w-12 h-12 mx-auto text-primary mb-4" />
-          <CardTitle className="text-2xl">Welcome to Our Loyalty Program</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Kitcho Family</CardTitle>
           <CardDescription>
-            Join now to start earning rewards on every purchase
+            Join our family and start earning rewards on every visit
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -102,7 +102,7 @@ export default function CustomerSignup() {
                 className="w-full"
                 disabled={signupMutation.isPending}
               >
-                {isExistingCustomer ? "View Dashboard" : "Join Now"}
+                {isExistingCustomer ? "View Dashboard" : "Join Kitcho Family"}
               </Button>
             </form>
           </Form>

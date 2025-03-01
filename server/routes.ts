@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { insertCustomerSchema, insertPointTransactionSchema } from "@shared/schema";
+import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express) {
@@ -40,6 +40,37 @@ export async function registerRoutes(app: Express) {
   app.get("/api/customers/:id/transactions", async (req, res) => {
     const transactions = await storage.getTransactions(parseInt(req.params.id));
     res.json(transactions);
+  });
+
+  // Level Benefits routes
+  app.get("/api/benefits/:level", async (req, res) => {
+    const benefits = await storage.getLevelBenefits(req.params.level);
+    res.json(benefits);
+  });
+
+  app.post("/api/benefits", async (req, res) => {
+    try {
+      const benefitData = insertLevelBenefitSchema.parse(req.body);
+      const benefit = await storage.addLevelBenefit(benefitData);
+      res.status(201).json(benefit);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: fromZodError(error).message });
+      } else {
+        res.status(500).json({ message: "Internal server error" });
+      }
+    }
+  });
+
+  app.patch("/api/benefits/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { active } = req.body;
+      const benefit = await storage.updateLevelBenefit(id, active);
+      res.json(benefit);
+    } catch (error) {
+      res.status(404).json({ message: "Benefit not found" });
+    }
   });
 
   // Admin routes
