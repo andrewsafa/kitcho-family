@@ -56,6 +56,7 @@
     "dayjs": "^1.11.13",
     "drizzle-orm": "^0.39.3",
     "drizzle-zod": "^0.7.0",
+    "eas-cli": "^15.0.12",
     "embla-carousel-react": "^8.3.0",
     "expo-cli": "^6.3.12",
     "expo-image-picker": "^16.0.6",
