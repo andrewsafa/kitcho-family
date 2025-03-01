@@ -92,6 +92,32 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Add delete points endpoint
+  app.post("/api/points/delete", requireAdmin, async (req, res) => {
+    try {
+      const { customerId, points, description } = req.body;
+      if (!customerId || !points || !description) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const transactionData = {
+        customerId,
+        points: -Math.abs(points), // Ensure points are negative for deletion
+        description: `Points Deleted: ${description}`
+      };
+
+      const customer = await storage.addPoints(transactionData);
+      res.json(customer);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: fromZodError(error).message });
+      } else {
+        res.status(500).json({ message: "Internal server error" });
+      }
+    }
+  });
+
+
   // Special Events routes
   app.get("/api/events", async (_req, res) => {
     const events = await storage.listActiveEvents();

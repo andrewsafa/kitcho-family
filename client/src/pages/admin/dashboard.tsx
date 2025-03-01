@@ -28,7 +28,7 @@ export default function AdminDashboard() {
     queryKey: ["/api/customers"],
   });
 
-  const filteredCustomers = customers.filter(customer => 
+  const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.mobile.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -245,6 +245,26 @@ export default function AdminDashboard() {
     }
   });
 
+  const deletePointsMutation = useMutation({
+    mutationFn: async (data: { customerId: number; points: number; description: string }) => {
+      const res = await apiRequest("POST", "/api/points/delete", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Points deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      form.reset();
+      setSelectedCustomer(null);
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  });
+
   const handleSearch = async (mobile: string) => {
     const customer = customers.find(c => c.mobile === mobile);
     setSelectedCustomer(customer || null);
@@ -293,6 +313,39 @@ export default function AdminDashboard() {
     changePasswordMutation.mutate({
       currentPassword: data.currentPassword,
       newPassword: data.newPassword
+    });
+  };
+
+  const handleDeletePoints = (customer: Customer) => {
+    const pointsToDelete = window.prompt("Enter number of points to delete:");
+    if (!pointsToDelete) return;
+
+    const numPoints = parseInt(pointsToDelete);
+    if (isNaN(numPoints) || numPoints <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid points value",
+        description: "Please enter a positive number"
+      });
+      return;
+    }
+
+    if (numPoints > customer.points) {
+      toast({
+        variant: "destructive",
+        title: "Invalid points value",
+        description: "Cannot delete more points than customer has"
+      });
+      return;
+    }
+
+    const reason = window.prompt("Enter reason for deleting points:");
+    if (!reason) return;
+
+    deletePointsMutation.mutate({
+      customerId: customer.id,
+      points: numPoints,
+      description: reason
     });
   };
 
@@ -748,6 +801,7 @@ export default function AdminDashboard() {
                     <TableHead>Mobile</TableHead>
                     <TableHead>Points</TableHead>
                     <TableHead>Level</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -757,11 +811,21 @@ export default function AdminDashboard() {
                       <TableCell>{customer.mobile}</TableCell>
                       <TableCell>{customer.points}</TableCell>
                       <TableCell>{customer.level}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeletePoints(customer)}
+                          disabled={customer.points <= 0}
+                        >
+                          Delete Points
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {filteredCustomers.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                         No customers found
                       </TableCell>
                     </TableRow>
