@@ -14,11 +14,11 @@ interface LoyaltyCardProps {
   customer: Customer;
 }
 
-export default function LoyaltyCard({ customer }: LoyaltyCardProps) {
+export function LoyaltyCard({ customer }: LoyaltyCardProps) {
   const currentLevel = customer.level as keyof typeof LOYALTY_LEVELS;
   const { min, max } = LOYALTY_LEVELS[currentLevel];
   const Icon = LEVEL_ICONS[currentLevel];
-  
+
   const progress = max === Infinity 
     ? 100 
     : ((customer.points - min) / (max - min)) * 100;

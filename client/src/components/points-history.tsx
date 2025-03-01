@@ -8,7 +8,7 @@ interface PointsHistoryProps {
   customerId: number;
 }
 
-export default function PointsHistory({ customerId }: PointsHistoryProps) {
+export function PointsHistory({ customerId }: PointsHistoryProps) {
   const { data: transactions = [] } = useQuery<PointTransaction[]>({
     queryKey: [`/api/customers/${customerId}/transactions`],
   });
