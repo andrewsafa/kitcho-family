@@ -91,12 +91,32 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Add new DELETE endpoint for benefits
+  app.delete("/api/benefits/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLevelBenefit(id);
+      res.json({ message: "Benefit deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete benefit" });
+    }
+  });
+
+  // Update the existing PATCH endpoint for benefits
   app.patch("/api/benefits/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { active } = req.body;
-      const benefit = await storage.updateLevelBenefit(id, active);
-      res.json(benefit);
+      const { level, benefit, active } = req.body;
+
+      // Validate the update data
+      const updateData = {
+        ...(level && { level }),
+        ...(benefit && { benefit }),
+        ...(typeof active !== 'undefined' && { active })
+      };
+
+      const updatedBenefit = await storage.updateLevelBenefit(id, updateData);
+      res.json(updatedBenefit);
     } catch (error) {
       res.status(404).json({ message: "Benefit not found" });
     }
