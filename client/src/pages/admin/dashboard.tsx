@@ -22,10 +22,16 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string>("Bronze");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
+
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.mobile.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const { data: benefits = [] } = useQuery<LevelBenefit[]>({
     queryKey: [`/api/benefits/${selectedLevel}`],
@@ -725,26 +731,44 @@ export default function AdminDashboard() {
             <CardTitle>Customers</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Mobile</TableHead>
-                  <TableHead>Points</TableHead>
-                  <TableHead>Level</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {customers.map((customer) => (
-                  <TableRow key={customer.id}>
-                    <TableCell>{customer.name}</TableCell>
-                    <TableCell>{customer.mobile}</TableCell>
-                    <TableCell>{customer.points}</TableCell>
-                    <TableCell>{customer.level}</TableCell>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or mobile number..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Mobile</TableHead>
+                    <TableHead>Points</TableHead>
+                    <TableHead>Level</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredCustomers.map((customer) => (
+                    <TableRow key={customer.id}>
+                      <TableCell>{customer.name}</TableCell>
+                      <TableCell>{customer.mobile}</TableCell>
+                      <TableCell>{customer.points}</TableCell>
+                      <TableCell>{customer.level}</TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredCustomers.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        No customers found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
