@@ -5,6 +5,6 @@
   "radius": 0.75,
   "rtl": {
     "enabled": true,
-    "defaultDirection": "ltr"
+    "defaultDirection": "rtl"
   }
 }
