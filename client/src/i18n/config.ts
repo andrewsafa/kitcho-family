@@ -99,7 +99,7 @@ i18n
       ar: {
         translation: {
           // Customer section
-          "welcome": "مرحباً بكم في عائلة كيتشو",
+          "welcome": "اهلا بيك في عائلة كيتشو",
           "join_family": "انضم إلى عائلتنا وابدأ في كسب المكافآت مع كل زيارة",
           "full_name": "الاسم الكامل",
           "mobile_number": "رقم الجوال",
