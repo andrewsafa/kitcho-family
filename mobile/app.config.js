@@ -48,9 +48,9 @@ export default {
     extra: {
       apiUrl: process.env.API_URL || "https://kitcho-family.replit.app",
       eas: {
-        projectId: "your-project-id"
+        projectId: process.env.EXPO_PROJECT_ID 
       }
     },
-    owner: "kitchofamily"
+    owner: process.env.EXPO_OWNER 
   }
 };
