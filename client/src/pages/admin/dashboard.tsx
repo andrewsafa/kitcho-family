@@ -486,19 +486,39 @@ export default function AdminDashboard() {
         const reader = new FileReader();
         reader.onload = async (e) => {
           try {
-            const data = JSON.parse(e.target?.result as string);
+            const rawData = e.target?.result as string;
+            const data = JSON.parse(rawData);
+
+            // Convert date strings back to Date objects
+            data.transactions?.forEach((t: any) => {
+              t.timestamp = new Date(t.timestamp);
+            });
+            data.benefits?.forEach((b: any) => {
+              b.lastUpdated = new Date(b.lastUpdated);
+            });
+            data.events?.forEach((e: any) => {
+              e.startDate = new Date(e.startDate);
+              e.endDate = new Date(e.endDate);
+            });
+            data.offers?.forEach((o: any) => {
+              o.validUntil = new Date(o.validUntil);
+            });
+
             const response = await apiRequest("POST", "/api/restore", data);
 
-            if (!response.ok) throw new Error('Restore failed');
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Restore failed');
+            }
 
             toast({ title: "Data restored successfully" });
             // Refresh all data
             queryClient.invalidateQueries();
-          } catch (error) {
+          } catch (error: any) {
             toast({
               variant: "destructive",
               title: "Restore failed",
-              description: error.message
+              description: error.message || 'Failed to parse backup file'
             });
           }
         };
@@ -506,11 +526,11 @@ export default function AdminDashboard() {
       };
 
       input.click();
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Restore failed",
-        description: error.message
+        description: error.message || 'Failed to initiate restore process'
       });
     }
   };
