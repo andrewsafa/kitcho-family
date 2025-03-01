@@ -140,6 +140,15 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-6xl mx-auto space-y-6">
+        <div className="text-center mb-8">
+          <img 
+            src="/logo.png" 
+            alt="Kitcho Family Logo" 
+            className="h-24 mx-auto"
+          />
+          <h1 className="text-2xl font-bold mt-4">Admin Dashboard</h1>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Add Points</CardTitle>
