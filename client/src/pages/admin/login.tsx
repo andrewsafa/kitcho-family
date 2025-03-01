@@ -60,7 +60,11 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <Lock className="w-12 h-12 mx-auto text-primary mb-4" />
+          <img 
+            src="/logo.png" 
+            alt="Kitcho Family Logo" 
+            className="h-24 mx-auto mb-6"
+          />
           <CardTitle className="text-2xl">Kitcho Family Admin</CardTitle>
           <CardDescription>
             Please login to access the admin dashboard
