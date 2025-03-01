@@ -1,0 +1,6 @@
+{
+  "frequency": "0 0 * * *",
+  "maxBackups": 7,
+  "enabled": false,
+  "backupDir": "backups"
+}
