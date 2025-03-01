@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +7,24 @@ import CustomerSignup from "@/pages/customer/signup";
 import CustomerDashboard from "@/pages/customer/dashboard";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminLogin from "@/pages/admin/login";
+import { useQuery } from "@tanstack/react-query";
+
+function ProtectedAdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { data: admin, isLoading } = useQuery({
+    queryKey: ["/api/admin/me"],
+    retry: false
+  });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!admin) {
+    return <Redirect to="/admin/login" />;
+  }
+
+  return <Component />;
+}
 
 function Router() {
   return (
@@ -14,7 +32,9 @@ function Router() {
       <Route path="/" component={CustomerSignup} />
       <Route path="/dashboard/:mobile" component={CustomerDashboard} />
       <Route path="/admin/login" component={AdminLogin} />
-      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin">
+        <ProtectedAdminRoute component={AdminDashboard} />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
