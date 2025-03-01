@@ -2,12 +2,14 @@ import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import NotFound from "@/pages/not-found";
 import CustomerSignup from "@/pages/customer/signup";
 import CustomerDashboard from "@/pages/customer/dashboard";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminLogin from "@/pages/admin/login";
 import { useQuery } from "@tanstack/react-query";
+import "./i18n/config"; // Import i18n configuration
 
 function ProtectedAdminRoute({ component: Component }: { component: React.ComponentType }) {
   const { data: admin, isLoading } = useQuery({
@@ -43,8 +45,11 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <div className="relative">
+        <LanguageSwitcher />
+        <Router />
+        <Toaster />
+      </div>
     </QueryClientProvider>
   );
 }
