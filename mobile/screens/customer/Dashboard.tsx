@@ -1,47 +1,39 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Text, Surface, useTheme, ActivityIndicator } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useQuery } from '@tanstack/react-query';
+import Constants from 'expo-constants';
 
 type Props = NativeStackScreenProps<any, 'CustomerDashboard'>;
 
 export function CustomerDashboard({ route, navigation }: Props) {
-  const { mobile } = route.params;
+  const { customerId } = route.params;
   const theme = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState('');
-  const [customer, setCustomer] = React.useState<any>(null);
 
-  const fetchCustomerData = async () => {
-    try {
-      setError('');
-      const response = await fetch(`YOUR_DEPLOYED_APP_URL/api/customers/mobile/${mobile}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch customer data');
+  const { data: customer, error, isLoading, refetch } = useQuery({
+    queryKey: ['customer', customerId],
+    queryFn: async () => {
+      const apiUrl = Constants.expoConfig?.extra?.apiUrl;
+      if (!apiUrl) {
+        throw new Error('API URL not configured');
       }
 
-      setCustomer(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCustomerData();
-  }, [mobile]);
+      const response = await fetch(`${apiUrl}/api/customers/${customerId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch customer data');
+      }
+      return response.json();
+    },
+  });
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    fetchCustomerData();
-  }, []);
+    refetch().finally(() => setRefreshing(false));
+  }, [refetch]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
@@ -54,7 +46,7 @@ export function CustomerDashboard({ route, navigation }: Props) {
       <View style={styles.container}>
         <Surface style={styles.surface}>
           <Text style={styles.error}>
-            {error || 'Customer not found'}
+            {error instanceof Error ? error.message : 'Customer not found'}
           </Text>
         </Surface>
       </View>
@@ -95,7 +87,7 @@ export function CustomerDashboard({ route, navigation }: Props) {
         <Text variant="titleMedium" style={styles.sectionTitle}>
           Your Benefits
         </Text>
-        {/* Add benefits list here */}
+        {/* Benefits list will be implemented in next iteration */}
       </Surface>
 
       {/* Special Offers */}
@@ -103,7 +95,7 @@ export function CustomerDashboard({ route, navigation }: Props) {
         <Text variant="titleMedium" style={styles.sectionTitle}>
           Special Offers
         </Text>
-        {/* Add special offers list here */}
+        {/* Special offers list will be implemented in next iteration */}
       </Surface>
     </ScrollView>
   );

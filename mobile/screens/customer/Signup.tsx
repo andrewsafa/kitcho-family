@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, Surface, ActivityIndicator } from 'react-native-paper';
+import { TextInput, Button, Text, Surface } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useMutation } from '@tanstack/react-query';
+import Constants from 'expo-constants';
 
 type Props = NativeStackScreenProps<any, 'CustomerSignup'>;
 
 export function CustomerSignup({ navigation }: Props) {
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const [nameError, setNameError] = useState('');
   const [mobileError, setMobileError] = useState('');
 
@@ -32,33 +32,39 @@ export function CustomerSignup({ navigation }: Props) {
     return isValid;
   };
 
-  const handleSignup = async () => {
-    if (!validateForm()) return;
+  const signupMutation = useMutation({
+    mutationFn: async (data: { name: string; mobile: string }) => {
+      const apiUrl = Constants.expoConfig?.extra?.apiUrl;
+      if (!apiUrl) {
+        throw new Error('API URL not configured');
+      }
 
-    try {
-      setLoading(true);
-      setError('');
-
-      const response = await fetch('YOUR_DEPLOYED_APP_URL/api/customers', {
+      const response = await fetch(`${apiUrl}/api/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, mobile }),
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to sign up');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to sign up');
       }
 
-      navigation.replace('CustomerDashboard', { mobile });
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      navigation.replace('CustomerDashboard', { customerId: data.id });
+    },
+    onError: (error: Error) => {
+      setError(error.message);
+    },
+  });
+
+  const handleSignup = () => {
+    if (!validateForm()) return;
+    signupMutation.mutate({ name, mobile });
   };
 
   return (
@@ -111,19 +117,11 @@ export function CustomerSignup({ navigation }: Props) {
           <Button
             mode="contained"
             onPress={handleSignup}
-            loading={loading}
-            disabled={loading}
+            loading={signupMutation.isPending}
+            disabled={signupMutation.isPending}
             style={styles.button}
           >
             Join Kitcho Family
-          </Button>
-
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate('AdminLogin')}
-            style={styles.adminButton}
-          >
-            Admin Login
           </Button>
         </Surface>
       </ScrollView>
@@ -166,9 +164,6 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 8,
-  },
-  adminButton: {
-    marginTop: 16,
   },
   error: {
     color: '#B00020',
