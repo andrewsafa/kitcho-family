@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { storage } from "./storage";
 import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { setupAuth, requireAdmin } from "./auth";
+import { setupAuth, requireAdmin, hashPassword, comparePasswords } from "./auth";
 
 export async function registerRoutes(app: Express) {
   // Set up authentication
@@ -25,6 +25,17 @@ export async function registerRoutes(app: Express) {
       } else {
         res.status(500).json({ message: "Internal server error" });
       }
+    }
+  });
+
+  // Add delete customer endpoint
+  app.delete("/api/customers/:id", requireAdmin, async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.id);
+      await storage.deleteCustomer(customerId);
+      res.status(200).json({ message: "Customer deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete customer" });
     }
   });
 
@@ -77,7 +88,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Admin routes
+  // Points routes
   app.post("/api/points", requireAdmin, async (req, res) => {
     try {
       const transactionData = insertPointTransactionSchema.parse(req.body);
@@ -110,13 +121,12 @@ export async function registerRoutes(app: Express) {
       res.json(customer);
     } catch (error) {
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: "Internal server error" });
       }
     }
   });
-
 
   // Special Events routes
   app.get("/api/events", async (_req, res) => {
@@ -183,8 +193,11 @@ export async function registerRoutes(app: Express) {
   app.post("/api/admin/change-password", requireAdmin, async (req, res) => {
     try {
       const { currentPassword, newPassword } = req.body;
-      const admin = await storage.getAdmin(req.user!.id);
+      if (!req.session.adminId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
 
+      const admin = await storage.getAdmin(req.session.adminId);
       if (!admin || !(await comparePasswords(currentPassword, admin.password))) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }

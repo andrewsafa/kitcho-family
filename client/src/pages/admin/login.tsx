@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next"; // Add translation hook
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -21,7 +20,6 @@ const loginSchema = z.object({
 type LoginData = z.infer<typeof loginSchema>;
 
 export default function AdminLogin() {
-  const { t } = useTranslation(); // Add translation hook
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -40,15 +38,15 @@ export default function AdminLogin() {
     },
     onSuccess: () => {
       toast({
-        title: t('login_successful'),
-        description: t('welcome_admin')
+        title: "Login successful",
+        description: "Welcome to the admin dashboard"
       });
       navigate("/admin");
     },
     onError: (error) => {
       toast({
         variant: "destructive",
-        title: t('login_failed'),
+        title: "Login failed",
         description: error.message
       });
     }
@@ -64,12 +62,12 @@ export default function AdminLogin() {
         <CardHeader className="text-center">
           <img 
             src="/logo.png" 
-            alt={t('kitcho_family_logo')}
+            alt="Kitcho Family Logo" 
             className="h-24 mx-auto mb-6"
           />
-          <CardTitle className="text-2xl">{t('kitcho_family_admin')}</CardTitle>
+          <CardTitle className="text-2xl">Kitcho Family Admin</CardTitle>
           <CardDescription>
-            {t('please_login')}
+            Please login to access the admin dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -80,7 +78,7 @@ export default function AdminLogin() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('username')}</FormLabel>
+                    <FormLabel>Username</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -93,7 +91,7 @@ export default function AdminLogin() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('password')}</FormLabel>
+                    <FormLabel>Password</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -106,7 +104,7 @@ export default function AdminLogin() {
                 className="w-full"
                 disabled={loginMutation.isPending}
               >
-                {t('login')}
+                Login
               </Button>
             </form>
           </Form>
