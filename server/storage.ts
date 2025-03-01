@@ -41,7 +41,7 @@ export interface IStorage {
   getTransactions(customerId: number): Promise<PointTransaction[]>;
   getLevelBenefits(level: string): Promise<LevelBenefit[]>;
   addLevelBenefit(benefit: InsertLevelBenefit): Promise<LevelBenefit>;
-  updateLevelBenefit(id: number, active: boolean): Promise<LevelBenefit>;
+  updateLevelBenefit(id: number, updates: Partial<InsertLevelBenefit & { active: boolean }>): Promise<LevelBenefit>;
   getAdmin(id: number): Promise<Admin | undefined>;
   getAdminByUsername(username: string): Promise<Admin | undefined>;
   createAdmin(admin: InsertAdmin): Promise<Admin>;
@@ -72,6 +72,9 @@ export interface IStorage {
   createStoreSubmission(submission: InsertStoreSubmission): Promise<StoreSubmission>;
   getStoreSubmission(id: number): Promise<StoreSubmission | undefined>;
   listStoreSubmissions(): Promise<StoreSubmission[]>;
+  deleteStoreSubmission(id: number): Promise<void>;
+  updateStoreSubmission(id: number, submission: Partial<InsertStoreSubmission>): Promise<StoreSubmission>;
+  deleteLevelBenefit(id: number): Promise<void>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -175,15 +178,23 @@ export class PostgresStorage implements IStorage {
     return result;
   }
 
-  async updateLevelBenefit(id: number, active: boolean): Promise<LevelBenefit> {
+  async updateLevelBenefit(
+    id: number, 
+    updates: Partial<InsertLevelBenefit & { active: boolean }>
+  ): Promise<LevelBenefit> {
     const [result] = await db
       .update(levelBenefits)
       .set({
-        active,
+        ...updates,
         lastUpdated: new Date()
       })
       .where(eq(levelBenefits.id, id))
       .returning();
+
+    if (!result) {
+      throw new Error("Benefit not found");
+    }
+
     return result;
   }
 
@@ -371,6 +382,23 @@ export class PostgresStorage implements IStorage {
       .select()
       .from(storeSubmissions)
       .orderBy(desc(storeSubmissions.createdAt));
+  }
+  async deleteStoreSubmission(id: number): Promise<void> {
+    await db
+      .delete(storeSubmissions)
+      .where(eq(storeSubmissions.id, id));
+  }
+
+  async updateStoreSubmission(id: number, submission: Partial<InsertStoreSubmission>): Promise<StoreSubmission> {
+    const [result] = await db
+      .update(storeSubmissions)
+      .set(submission)
+      .where(eq(storeSubmissions.id, id))
+      .returning();
+    return result;
+  }
+  async deleteLevelBenefit(id: number): Promise<void> {
+    await db.delete(levelBenefits).where(eq(levelBenefits.id, id));
   }
 }
 
