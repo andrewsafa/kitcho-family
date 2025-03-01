@@ -3,6 +3,8 @@ import {
   type InsertCustomer,
   type PointTransaction,
   type InsertPointTransaction,
+  type LevelBenefit,
+  type InsertLevelBenefit,
   calculateLevel
 } from "@shared/schema";
 
@@ -13,19 +15,26 @@ export interface IStorage {
   listCustomers(): Promise<Customer[]>;
   addPoints(transaction: InsertPointTransaction): Promise<Customer>;
   getTransactions(customerId: number): Promise<PointTransaction[]>;
+  getLevelBenefits(level: string): Promise<LevelBenefit[]>;
+  addLevelBenefit(benefit: InsertLevelBenefit): Promise<LevelBenefit>;
+  updateLevelBenefit(id: number, active: boolean): Promise<LevelBenefit>;
 }
 
 export class MemStorage implements IStorage {
   private customers: Map<number, Customer>;
   private transactions: Map<number, PointTransaction>;
+  private benefits: Map<number, LevelBenefit>;
   private currentCustomerId: number;
   private currentTransactionId: number;
+  private currentBenefitId: number;
 
   constructor() {
     this.customers = new Map();
     this.transactions = new Map();
+    this.benefits = new Map();
     this.currentCustomerId = 1;
     this.currentTransactionId = 1;
+    this.currentBenefitId = 1;
   }
 
   async getCustomer(id: number): Promise<Customer | undefined> {
@@ -60,7 +69,7 @@ export class MemStorage implements IStorage {
 
     const txnId = this.currentTransactionId++;
     const timestamp = new Date();
-    
+
     const txn: PointTransaction = {
       id: txnId,
       ...transaction,
@@ -73,7 +82,7 @@ export class MemStorage implements IStorage {
       points: customer.points + transaction.points,
     };
     updatedCustomer.level = calculateLevel(updatedCustomer.points);
-    
+
     this.customers.set(customer.id, updatedCustomer);
     return updatedCustomer;
   }
@@ -82,6 +91,37 @@ export class MemStorage implements IStorage {
     return Array.from(this.transactions.values())
       .filter(t => t.customerId === customerId)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  async getLevelBenefits(level: string): Promise<LevelBenefit[]> {
+    return Array.from(this.benefits.values())
+      .filter(b => b.level === level && b.active);
+  }
+
+  async addLevelBenefit(benefit: InsertLevelBenefit): Promise<LevelBenefit> {
+    const id = this.currentBenefitId++;
+    const newBenefit: LevelBenefit = {
+      id,
+      ...benefit,
+      active: true,
+      lastUpdated: new Date()
+    };
+    this.benefits.set(id, newBenefit);
+    return newBenefit;
+  }
+
+  async updateLevelBenefit(id: number, active: boolean): Promise<LevelBenefit> {
+    const benefit = this.benefits.get(id);
+    if (!benefit) {
+      throw new Error("Benefit not found");
+    }
+    const updatedBenefit: LevelBenefit = {
+      ...benefit,
+      active,
+      lastUpdated: new Date()
+    };
+    this.benefits.set(id, updatedBenefit);
+    return updatedBenefit;
   }
 }
 

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -18,6 +18,14 @@ export const pointTransactions = pgTable("point_transactions", {
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
+export const levelBenefits = pgTable("level_benefits", {
+  id: serial("id").primaryKey(),
+  level: text("level").notNull(),
+  benefit: text("benefit").notNull(),
+  active: boolean("active").notNull().default(true),
+  lastUpdated: timestamp("last_updated").notNull().defaultNow(),
+});
+
 export const insertCustomerSchema = createInsertSchema(customers).pick({
   name: true,
   mobile: true,
@@ -32,16 +40,23 @@ export const insertPointTransactionSchema = createInsertSchema(pointTransactions
   description: true,
 });
 
+export const insertLevelBenefitSchema = createInsertSchema(levelBenefits).pick({
+  level: true,
+  benefit: true,
+});
+
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type PointTransaction = typeof pointTransactions.$inferSelect;
 export type InsertPointTransaction = z.infer<typeof insertPointTransactionSchema>;
+export type LevelBenefit = typeof levelBenefits.$inferSelect;
+export type InsertLevelBenefit = z.infer<typeof insertLevelBenefitSchema>;
 
 export const LOYALTY_LEVELS = {
-  Bronze: { min: 0, max: 999 },
-  Silver: { min: 1000, max: 4999 },
-  Gold: { min: 5000, max: 9999 },
-  Platinum: { min: 10000, max: Infinity }
+  Bronze: { min: 0, max: 100000 },
+  Silver: { min: 100001, max: 300000 },
+  Gold: { min: 300001, max: 500000 },
+  Diamond: { min: 500001, max: Infinity }
 } as const;
 
 export type LoyaltyLevel = keyof typeof LOYALTY_LEVELS;
