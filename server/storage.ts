@@ -40,6 +40,23 @@ export interface IStorage {
   getSpecialOffers(level: string): Promise<SpecialOffer[]>;
   createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer>;
   updateSpecialOfferStatus(id: number, active: boolean): Promise<SpecialOffer>;
+
+  // Add backup/restore methods
+  exportData(): Promise<{
+    customers: Customer[];
+    transactions: PointTransaction[];
+    benefits: LevelBenefit[];
+    events: SpecialEvent[];
+    offers: SpecialOffer[];
+  }>;
+
+  importData(data: {
+    customers: Customer[];
+    transactions: PointTransaction[];
+    benefits: LevelBenefit[];
+    events: SpecialEvent[];
+    offers: SpecialOffer[];
+  }): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -278,6 +295,57 @@ export class MemStorage implements IStorage {
     const updatedOffer: SpecialOffer = { ...offer, active };
     this.offers.set(id, updatedOffer);
     return updatedOffer;
+  }
+
+  async exportData() {
+    return {
+      customers: Array.from(this.customers.values()),
+      transactions: Array.from(this.transactions.values()),
+      benefits: Array.from(this.benefits.values()),
+      events: Array.from(this.events.values()),
+      offers: Array.from(this.offers.values())
+    };
+  }
+
+  async importData(data: {
+    customers: Customer[];
+    transactions: PointTransaction[];
+    benefits: LevelBenefit[];
+    events: SpecialEvent[];
+    offers: SpecialOffer[];
+  }) {
+    // Clear existing data
+    this.customers.clear();
+    this.transactions.clear();
+    this.benefits.clear();
+    this.events.clear();
+    this.offers.clear();
+
+    // Import new data
+    data.customers.forEach(customer => {
+      this.customers.set(customer.id, customer);
+      this.currentCustomerId = Math.max(this.currentCustomerId, customer.id + 1);
+    });
+
+    data.transactions.forEach(transaction => {
+      this.transactions.set(transaction.id, transaction);
+      this.currentTransactionId = Math.max(this.currentTransactionId, transaction.id + 1);
+    });
+
+    data.benefits.forEach(benefit => {
+      this.benefits.set(benefit.id, benefit);
+      this.currentBenefitId = Math.max(this.currentBenefitId, benefit.id + 1);
+    });
+
+    data.events.forEach(event => {
+      this.events.set(event.id, event);
+      this.currentEventId = Math.max(this.currentEventId, event.id + 1);
+    });
+
+    data.offers.forEach(offer => {
+      this.offers.set(offer.id, offer);
+      this.currentOfferId = Math.max(this.currentOfferId, offer.id + 1);
+    });
   }
 }
 

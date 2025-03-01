@@ -16,6 +16,7 @@ import { Search } from "lucide-react";
 import { z } from "zod";
 import { format } from "date-fns";
 import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
+import { Download, Upload } from "lucide-react";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -373,6 +374,79 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleBackup = async () => {
+    try {
+      const response = await fetch('/api/backup', {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) throw new Error('Backup failed');
+
+      const data = await response.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kitcho-family-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({ title: "Backup created successfully" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Backup failed",
+        description: error.message
+      });
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const data = JSON.parse(e.target?.result as string);
+            const response = await apiRequest("POST", "/api/restore", data);
+
+            if (!response.ok) throw new Error('Restore failed');
+
+            toast({ title: "Data restored successfully" });
+            // Refresh all data
+            queryClient.invalidateQueries();
+          } catch (error) {
+            toast({
+              variant: "destructive",
+              title: "Restore failed",
+              description: error.message
+            });
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      input.click();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Restore failed",
+        description: error.message
+      });
+    }
+  };
+
   useEffect(() => {
     requestNotificationPermission();
   }, []);
@@ -387,6 +461,26 @@ export default function AdminDashboard() {
             className="h-24 mx-auto"
           />
           <h1 className="text-2xl font-bold mt-4">Admin Dashboard</h1>
+
+          {/* Add Backup/Restore buttons */}
+          <div className="flex justify-center gap-4 mt-4">
+            <Button
+              onClick={handleBackup}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Backup Data
+            </Button>
+            <Button
+              onClick={handleRestore}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              Restore Data
+            </Button>
+          </div>
         </div>
 
         <Card>

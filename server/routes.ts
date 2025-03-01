@@ -210,5 +210,37 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Backup endpoint
+  app.get("/api/backup", requireAdmin, async (_req, res) => {
+    try {
+      const data = await storage.exportData();
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename=kitcho-family-backup.json');
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create backup" });
+    }
+  });
+
+  // Restore endpoint
+  app.post("/api/restore", requireAdmin, async (req, res) => {
+    try {
+      const data = req.body;
+      // Basic validation of the backup file structure
+      if (!data.customers || !Array.isArray(data.customers) ||
+          !data.transactions || !Array.isArray(data.transactions) ||
+          !data.benefits || !Array.isArray(data.benefits) ||
+          !data.events || !Array.isArray(data.events) ||
+          !data.offers || !Array.isArray(data.offers)) {
+        return res.status(400).json({ message: "Invalid backup file format" });
+      }
+
+      await storage.importData(data);
+      res.json({ message: "Data restored successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to restore data" });
+    }
+  });
+
   return createServer(app);
 }
