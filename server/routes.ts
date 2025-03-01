@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth, requireAdmin, hashPassword, comparePasswords } from "./auth";
+import { backupScheduler } from "./backup-scheduler";
 
 export async function registerRoutes(app: Express) {
   // Set up authentication
@@ -239,6 +240,39 @@ export async function registerRoutes(app: Express) {
       res.json({ message: "Data restored successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to restore data" });
+    }
+  });
+
+  // Backup Scheduling endpoints
+  app.get("/api/backup/config", requireAdmin, async (_req, res) => {
+    const config = backupScheduler.getConfig();
+    res.json(config);
+  });
+
+  app.post("/api/backup/config", requireAdmin, async (req, res) => {
+    try {
+      await backupScheduler.configure(req.body);
+      res.json({ success: true, config: backupScheduler.getConfig() });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update backup configuration" });
+    }
+  });
+
+  app.get("/api/backup/history", requireAdmin, async (_req, res) => {
+    const history = backupScheduler.getHistory();
+    res.json(history);
+  });
+
+  app.post("/api/backup/run", requireAdmin, async (_req, res) => {
+    try {
+      const result = await backupScheduler.createBackup();
+      if (result.success) {
+        res.json({ message: "Backup created successfully", filename: result.filename });
+      } else {
+        res.status(500).json({ message: `Backup failed: ${result.error}` });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create backup" });
     }
   });
 

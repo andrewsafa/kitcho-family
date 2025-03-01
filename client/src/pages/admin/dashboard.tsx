@@ -16,7 +16,29 @@ import { Search } from "lucide-react";
 import { z } from "zod";
 import { format } from "date-fns";
 import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
-import { Download, Upload } from "lucide-react";
+import { Download, Upload, Settings } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+
+interface BackupConfig {
+  frequency: string;
+  maxBackups: number;
+  enabled: boolean;
+  backupDir: string;
+}
+
+interface BackupHistory {
+  timestamp: string;
+  filename: string;
+  size: number;
+}
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -24,6 +46,7 @@ export default function AdminDashboard() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string>("Bronze");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showBackupSettings, setShowBackupSettings] = useState(false);
 
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -284,6 +307,51 @@ export default function AdminDashboard() {
     }
   });
 
+  const { data: backupConfig } = useQuery<BackupConfig>({
+    queryKey: ["/api/backup/config"],
+  });
+
+  const { data: backupHistory = [] } = useQuery<BackupHistory[]>({
+    queryKey: ["/api/backup/history"],
+  });
+
+  const updateBackupConfigMutation = useMutation({
+    mutationFn: async (config: Partial<BackupConfig>) => {
+      const res = await apiRequest("POST", "/api/backup/config", config);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Backup settings updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/backup/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/backup/history"] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to update backup settings",
+        description: error.message
+      });
+    }
+  });
+
+  const runBackupMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/backup/run");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Manual backup created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/backup/history"] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to create backup",
+        description: error.message
+      });
+    }
+  });
+
   const handleSearch = async (mobile: string) => {
     const customer = customers.find(c => c.mobile === mobile);
     setSelectedCustomer(customer || null);
@@ -480,8 +548,109 @@ export default function AdminDashboard() {
               <Upload className="h-4 w-4" />
               Restore Data
             </Button>
+            <Button
+              onClick={() => setShowBackupSettings(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Backup Settings
+            </Button>
           </div>
         </div>
+
+        <Dialog open={showBackupSettings} onOpenChange={setShowBackupSettings}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Backup Settings</DialogTitle>
+              <DialogDescription>
+                Configure automated backup schedule and retention.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enabled"
+                  checked={backupConfig?.enabled}
+                  onCheckedChange={(checked) =>
+                    updateBackupConfigMutation.mutate({ enabled: checked })
+                  }
+                />
+                <label htmlFor="enabled">Enable Automated Backups</label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Backup Frequency</label>
+                <Select
+                  value={backupConfig?.frequency}
+                  onValueChange={(value) =>
+                    updateBackupConfigMutation.mutate({ frequency: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0 0 * * *">Daily (Midnight)</SelectItem>
+                    <SelectItem value="0 0 * * 0">Weekly (Sunday)</SelectItem>
+                    <SelectItem value="0 0 1 * *">Monthly (1st)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Maximum Backups</label>
+                <Input
+                  type="number"
+                  value={backupConfig?.maxBackups}
+                  onChange={(e) =>
+                    updateBackupConfigMutation.mutate({
+                      maxBackups: parseInt(e.target.value)
+                    })
+                  }
+                  min={1}
+                  max={30}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Backup History</h3>
+                <div className="max-h-[200px] overflow-y-auto space-y-2">
+                  {backupHistory.map((backup) => (
+                    <div
+                      key={backup.filename}
+                      className="text-sm p-2 border rounded"
+                    >
+                      <p className="font-medium">{backup.filename}</p>
+                      <p className="text-muted-foreground">
+                        {format(new Date(backup.timestamp), "PPp")}
+                      </p>
+                      <p className="text-muted-foreground">
+                        Size: {(backup.size / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowBackupSettings(false)}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => runBackupMutation.mutate()}
+                disabled={runBackupMutation.isPending}
+              >
+                Run Backup Now
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card>
           <CardHeader>
