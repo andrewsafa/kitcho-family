@@ -5,6 +5,19 @@ import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitS
 import { fromZodError } from "zod-validation-error";
 import { setupAuth, requireAdmin, hashPassword, comparePasswords } from "./auth";
 import { backupScheduler } from "./backup-scheduler";
+import multer from "multer";
+import sharp from "sharp";
+import path from "path";
+import fs from "fs/promises";
+
+const multerStorage = multer.diskStorage({
+  destination: "./store-assets",
+  filename: function (req, file, cb) {
+    cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
+  }
+});
+
+const upload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express) {
   // Set up authentication
@@ -273,6 +286,74 @@ export async function registerRoutes(app: Express) {
       }
     } catch (error) {
       res.status(500).json({ message: "Failed to create backup" });
+    }
+  });
+
+  // Add new store submission endpoint
+  app.post("/api/store-submission", upload.fields([
+    { name: 'icon', maxCount: 1 },
+    { name: 'featureGraphic', maxCount: 1 },
+    { name: 'screenshots', maxCount: 8 }
+  ]), async (req, res) => {
+    try {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const storeData = req.body;
+
+      // Ensure store-assets directory exists
+      await fs.mkdir("./store-assets", { recursive: true });
+
+      // Validate and process icon
+      if (files.icon?.[0]) {
+        const iconBuffer = await sharp(files.icon[0].path)
+          .resize(512, 512)
+          .png()
+          .toBuffer();
+        await fs.writeFile(`./store-assets/icon.png`, iconBuffer);
+      }
+
+      // Validate and process feature graphic
+      if (files.featureGraphic?.[0]) {
+        const featureBuffer = await sharp(files.featureGraphic[0].path)
+          .resize(1024, 500)
+          .png()
+          .toBuffer();
+        await fs.writeFile(`./store-assets/feature.png`, featureBuffer);
+      }
+
+      // Process screenshots
+      if (files.screenshots) {
+        await Promise.all(files.screenshots.map(async (screenshot, index) => {
+          const screenshotBuffer = await sharp(screenshot.path)
+            .png()
+            .toBuffer();
+          await fs.writeFile(`./store-assets/screenshot-${index + 1}.png`, screenshotBuffer);
+        }));
+      }
+
+      // Store submission data
+      await storage.createStoreSubmission({
+        shortDescription: storeData.shortDescription,
+        fullDescription: storeData.fullDescription,
+        privacyPolicyUrl: storeData.privacyPolicyUrl,
+        contactEmail: storeData.contactEmail,
+        contactPhone: storeData.contactPhone,
+        iconPath: files.icon?.[0] ? 'icon.png' : null,
+        featureGraphicPath: files.featureGraphic?.[0] ? 'feature.png' : null,
+        screenshotPaths: files.screenshots?.map((_, index) => `screenshot-${index + 1}.png`) || [],
+        status: 'pending',
+        createdAt: new Date()
+      });
+
+      res.status(201).json({
+        message: "Store submission prepared successfully",
+        status: "pending"
+      });
+    } catch (error) {
+      console.error('Store submission error:', error);
+      res.status(500).json({
+        message: "Failed to process store submission",
+        error: error.message
+      });
     }
   });
 

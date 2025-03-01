@@ -18,7 +18,10 @@ import {
   levelBenefits,
   admins,
   specialEvents,
-  specialOffers
+  specialOffers,
+  type StoreSubmission,
+  type InsertStoreSubmission,
+  storeSubmissions
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, and, gt } from "drizzle-orm";
@@ -66,6 +69,9 @@ export interface IStorage {
   }): Promise<void>;
   sessionStore: session.Store;
   testConnection(): Promise<boolean>;
+  createStoreSubmission(submission: InsertStoreSubmission): Promise<StoreSubmission>;
+  getStoreSubmission(id: number): Promise<StoreSubmission | undefined>;
+  listStoreSubmissions(): Promise<StoreSubmission[]>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -343,6 +349,28 @@ export class PostgresStorage implements IStorage {
       console.error('Database test failed:', error);
       return false;
     }
+  }
+  async createStoreSubmission(submission: InsertStoreSubmission): Promise<StoreSubmission> {
+    const [result] = await db
+      .insert(storeSubmissions)
+      .values(submission)
+      .returning();
+    return result;
+  }
+
+  async getStoreSubmission(id: number): Promise<StoreSubmission | undefined> {
+    const results = await db
+      .select()
+      .from(storeSubmissions)
+      .where(eq(storeSubmissions.id, id));
+    return results[0];
+  }
+
+  async listStoreSubmissions(): Promise<StoreSubmission[]> {
+    return await db
+      .select()
+      .from(storeSubmissions)
+      .orderBy(desc(storeSubmissions.createdAt));
   }
 }
 
