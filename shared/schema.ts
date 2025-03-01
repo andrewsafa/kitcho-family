@@ -2,6 +2,12 @@ import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const admins = pgTable("admins", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+});
+
 export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -26,6 +32,14 @@ export const levelBenefits = pgTable("level_benefits", {
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
 });
 
+export const insertAdminSchema = createInsertSchema(admins).pick({
+  username: true,
+  password: true,
+}).extend({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 export const insertCustomerSchema = createInsertSchema(customers).pick({
   name: true,
   mobile: true,
@@ -45,6 +59,8 @@ export const insertLevelBenefitSchema = createInsertSchema(levelBenefits).pick({
   benefit: true,
 });
 
+export type Admin = typeof admins.$inferSelect;
+export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type PointTransaction = typeof pointTransactions.$inferSelect;

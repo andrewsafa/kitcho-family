@@ -5,6 +5,8 @@ import {
   type InsertPointTransaction,
   type LevelBenefit,
   type InsertLevelBenefit,
+  type Admin,
+  type InsertAdmin,
   calculateLevel
 } from "@shared/schema";
 
@@ -18,23 +20,31 @@ export interface IStorage {
   getLevelBenefits(level: string): Promise<LevelBenefit[]>;
   addLevelBenefit(benefit: InsertLevelBenefit): Promise<LevelBenefit>;
   updateLevelBenefit(id: number, active: boolean): Promise<LevelBenefit>;
+  // Admin methods
+  getAdmin(id: number): Promise<Admin | undefined>;
+  getAdminByUsername(username: string): Promise<Admin | undefined>;
+  createAdmin(admin: InsertAdmin): Promise<Admin>;
 }
 
 export class MemStorage implements IStorage {
   private customers: Map<number, Customer>;
   private transactions: Map<number, PointTransaction>;
   private benefits: Map<number, LevelBenefit>;
+  private admins: Map<number, Admin>;
   private currentCustomerId: number;
   private currentTransactionId: number;
   private currentBenefitId: number;
+  private currentAdminId: number;
 
   constructor() {
     this.customers = new Map();
     this.transactions = new Map();
     this.benefits = new Map();
+    this.admins = new Map();
     this.currentCustomerId = 1;
     this.currentTransactionId = 1;
     this.currentBenefitId = 1;
+    this.currentAdminId = 1;
   }
 
   async getCustomer(id: number): Promise<Customer | undefined> {
@@ -94,11 +104,8 @@ export class MemStorage implements IStorage {
   }
 
   async getLevelBenefits(level: string): Promise<LevelBenefit[]> {
-    // Strict equality check for level matching
     const benefitsForLevel = Array.from(this.benefits.values())
-      .filter(benefit => {
-        return benefit.level === level && benefit.active;
-      })
+      .filter(benefit => benefit.level === level && benefit.active)
       .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
 
     console.log(`Fetching benefits for level ${level}:`, benefitsForLevel);
@@ -130,6 +137,23 @@ export class MemStorage implements IStorage {
     };
     this.benefits.set(id, updatedBenefit);
     return updatedBenefit;
+  }
+
+  async getAdmin(id: number): Promise<Admin | undefined> {
+    return this.admins.get(id);
+  }
+
+  async getAdminByUsername(username: string): Promise<Admin | undefined> {
+    return Array.from(this.admins.values()).find(
+      (admin) => admin.username === username
+    );
+  }
+
+  async createAdmin(admin: InsertAdmin): Promise<Admin> {
+    const id = this.currentAdminId++;
+    const newAdmin: Admin = { id, ...admin };
+    this.admins.set(id, newAdmin);
+    return newAdmin;
   }
 }
 

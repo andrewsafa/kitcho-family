@@ -3,8 +3,12 @@ import { createServer } from "http";
 import { storage } from "./storage";
 import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+import { setupAuth, requireAdmin } from "./auth";
 
 export async function registerRoutes(app: Express) {
+  // Set up authentication
+  setupAuth(app);
+
   // Customer routes
   app.post("/api/customers", async (req, res) => {
     try {
@@ -32,7 +36,7 @@ export async function registerRoutes(app: Express) {
     res.json(customer);
   });
 
-  app.get("/api/customers", async (_req, res) => {
+  app.get("/api/customers", requireAdmin, async (_req, res) => {
     const customers = await storage.listCustomers();
     res.json(customers);
   });
@@ -48,7 +52,7 @@ export async function registerRoutes(app: Express) {
     res.json(benefits);
   });
 
-  app.post("/api/benefits", async (req, res) => {
+  app.post("/api/benefits", requireAdmin, async (req, res) => {
     try {
       const benefitData = insertLevelBenefitSchema.parse(req.body);
       const benefit = await storage.addLevelBenefit(benefitData);
@@ -62,7 +66,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/benefits/:id", async (req, res) => {
+  app.patch("/api/benefits/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { active } = req.body;
@@ -74,7 +78,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // Admin routes
-  app.post("/api/points", async (req, res) => {
+  app.post("/api/points", requireAdmin, async (req, res) => {
     try {
       const transactionData = insertPointTransactionSchema.parse(req.body);
       const customer = await storage.addPoints(transactionData);

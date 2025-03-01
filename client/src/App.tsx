@@ -6,12 +6,14 @@ import NotFound from "@/pages/not-found";
 import CustomerSignup from "@/pages/customer/signup";
 import CustomerDashboard from "@/pages/customer/dashboard";
 import AdminDashboard from "@/pages/admin/dashboard";
+import AdminLogin from "@/pages/admin/login";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={CustomerSignup} />
       <Route path="/dashboard/:mobile" component={CustomerDashboard} />
+      <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={AdminDashboard} />
       <Route component={NotFound} />
     </Switch>
