@@ -3,9 +3,9 @@ import { useParams } from "wouter";
 import { type Customer } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import LoyaltyCard from "@/components/loyalty-card";
-import PointsHistory from "@/components/points-history";
-import LevelBenefits from "@/components/level-benefits";
+import { LoyaltyCard } from "@/components/loyalty-card";
+import { PointsHistory } from "@/components/points-history";
+import { LevelBenefits } from "@/components/level-benefits";
 
 export default function CustomerDashboard() {
   const { mobile } = useParams();

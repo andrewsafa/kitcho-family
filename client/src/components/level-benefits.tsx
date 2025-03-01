@@ -41,7 +41,7 @@ interface LevelBenefitsProps {
   currentLevel: LoyaltyLevel;
 }
 
-export default function LevelBenefits({ currentLevel }: LevelBenefitsProps) {
+export function LevelBenefits({ currentLevel }: LevelBenefitsProps) {
   const Icon = LEVEL_ICONS[currentLevel];
 
   return (
