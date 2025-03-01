@@ -33,7 +33,10 @@ export default {
       "expo-router"
     ],
     extra: {
-      apiUrl: process.env.API_URL || "https://YOUR-REPLIT-APP-URL.replit.app",
+      apiUrl: process.env.API_URL || "https://kitcho-family.replit.app",
+      eas: {
+        projectId: "your-project-id"
+      }
     }
   }
 };

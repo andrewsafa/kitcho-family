@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { TextInput, Button, Surface, Text } from 'react-native-paper';
 import Constants from 'expo-constants';
 import { useMutation } from '@tanstack/react-query';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -41,6 +42,8 @@ export default function SignupScreen() {
         throw new Error('API URL not configured');
       }
 
+      console.log('Attempting signup with URL:', apiUrl); // Debug log
+
       const response = await fetch(`${apiUrl}/api/customers`, {
         method: 'POST',
         headers: {
@@ -51,15 +54,21 @@ export default function SignupScreen() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Signup error:', errorData); // Debug log
         throw new Error(errorData.message || 'Failed to sign up');
       }
 
-      return response.json();
+      const responseData = await response.json();
+      console.log('Signup successful:', responseData); // Debug log
+      return responseData;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      console.log('Storing customer ID:', data.id); // Debug log
+      await AsyncStorage.setItem('customerId', data.id.toString());
       router.replace('/(tabs)/dashboard');
     },
     onError: (error: Error) => {
+      console.error('Mutation error:', error); // Debug log
       setError(error.message);
     },
   });

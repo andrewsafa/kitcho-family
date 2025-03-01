@@ -1,24 +1,26 @@
 import { useEffect } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Surface, Text, ActivityIndicator, useTheme } from 'react-native-paper';
+import { Surface, Text, ActivityIndicator } from 'react-native-paper';
 import Constants from 'expo-constants';
 import { useQuery } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const theme = useTheme();
 
   // Get the customer ID from storage
   const { data: customerId } = useQuery({
     queryKey: ['customerId'],
     queryFn: async () => {
+      console.log('Fetching customer ID from storage'); // Debug log
       const id = await AsyncStorage.getItem('customerId');
       if (!id) {
+        console.log('No customer ID found, redirecting to signup'); // Debug log
         router.replace('/(auth)/signup');
         return null;
       }
+      console.log('Found customer ID:', id); // Debug log
       return parseInt(id);
     },
   });
@@ -40,12 +42,17 @@ export default function DashboardScreen() {
         throw new Error('API URL not configured');
       }
 
+      console.log('Fetching customer data from:', apiUrl); // Debug log
       const response = await fetch(`${apiUrl}/api/customers/${customerId}`);
+
       if (!response.ok) {
+        console.error('API Error:', response.status, response.statusText); // Debug log
         throw new Error('Failed to fetch customer data');
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('Customer data received:', data); // Debug log
+      return data;
     },
     enabled: !!customerId,
   });
