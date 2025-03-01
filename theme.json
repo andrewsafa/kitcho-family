@@ -2,9 +2,5 @@
   "variant": "professional",
   "primary": "hsl(25, 95%, 53%)",
   "appearance": "light",
-  "radius": 0.75,
-  "rtl": {
-    "enabled": true,
-    "defaultDirection": "rtl"
-  }
+  "radius": 0.75
 }
