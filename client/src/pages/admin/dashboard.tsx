@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Search } from "lucide-react";
+import { z } from "zod";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -21,14 +22,21 @@ export default function AdminDashboard() {
     queryKey: ["/api/customers"],
   });
 
-  const form = useForm<InsertPointTransaction & { mobile: string }>({
-    resolver: zodResolver(insertPointTransactionSchema.extend({
-      mobile: insertPointTransactionSchema.shape.customerId.transform(String)
-    })),
+  // Create a form-specific schema that handles the mobile field and ensures points is a number
+  const formSchema = z.object({
+    mobile: z.string(),
+    points: z.coerce.number(),  // This will coerce the string input to a number
+    description: z.string().min(1, "Description is required"),
+  });
+
+  type FormData = z.infer<typeof formSchema>;
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
+      mobile: "",
       points: 0,
-      description: "",
-      mobile: ""
+      description: ""
     }
   });
 
@@ -63,13 +71,17 @@ export default function AdminDashboard() {
     }
   };
 
-  const onSubmit = (data: InsertPointTransaction & { mobile: string }) => {
+  const onSubmit = (data: FormData) => {
     if (!selectedCustomer) return;
-    addPointsMutation.mutate({
+
+    // Convert the form data to the expected InsertPointTransaction type
+    const transactionData: InsertPointTransaction = {
       customerId: selectedCustomer.id,
-      points: Number(data.points),
+      points: data.points,  // Now guaranteed to be a number
       description: data.description
-    });
+    };
+
+    addPointsMutation.mutate(transactionData);
   };
 
   return (
@@ -111,7 +123,11 @@ export default function AdminDashboard() {
                       <FormItem className="flex-1">
                         <FormLabel>Points</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input 
+                            type="number" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
