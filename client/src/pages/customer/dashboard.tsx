@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LoyaltyCard } from "@/components/loyalty-card";
 import { PointsHistory } from "@/components/points-history";
 import { LevelBenefits } from "@/components/level-benefits";
+import { Announcements } from "@/components/announcements";
 
 export default function CustomerDashboard() {
   const { mobile } = useParams();
@@ -38,6 +39,7 @@ export default function CustomerDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-4xl mx-auto space-y-6">
+        <Announcements customerLevel={customer.level} />
         <LoyaltyCard customer={customer} />
         <div className="grid md:grid-cols-2 gap-6">
           <PointsHistory customerId={customer.id} />

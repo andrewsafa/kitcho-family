@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialEvent, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema } from "@shared/schema";
+import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialEvent, type SpecialOffer, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,10 @@ export default function AdminDashboard() {
 
   const { data: specialEvents = [] } = useQuery<SpecialEvent[]>({
     queryKey: ["/api/events"],
+  });
+
+  const { data: specialOffers = [] } = useQuery<SpecialOffer[]>({
+    queryKey: [`/api/offers/${selectedLevel}`],
   });
 
   // Points form
@@ -72,6 +76,18 @@ export default function AdminDashboard() {
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     }
   });
+
+  // Special Offers form
+  const offerForm = useForm({
+    resolver: zodResolver(insertSpecialOfferSchema),
+    defaultValues: {
+      level: "Bronze",
+      title: "",
+      description: "",
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    }
+  });
+
 
   const addPointsMutation = useMutation({
     mutationFn: async (data: InsertPointTransaction) => {
@@ -151,6 +167,35 @@ export default function AdminDashboard() {
     }
   });
 
+  const addOfferMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof insertSpecialOfferSchema>) => {
+      const res = await apiRequest("POST", "/api/offers", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Special offer created successfully" });
+      queryClient.invalidateQueries({ queryKey: [`/api/offers/${selectedLevel}`] });
+      offerForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  });
+
+  const updateOfferMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/offers/${id}`, { active });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/offers/${selectedLevel}`] });
+    }
+  });
+
   const handleSearch = async (mobile: string) => {
     const customer = customers.find(c => c.mobile === mobile);
     setSelectedCustomer(customer || null);
@@ -185,6 +230,14 @@ export default function AdminDashboard() {
 
   const onEventSubmit = (data: z.infer<typeof insertSpecialEventSchema>) => {
     addEventMutation.mutate(data);
+  };
+
+  const onOfferSubmit = (data: z.infer<typeof insertSpecialOfferSchema>) => {
+    const offerData = {
+      ...data,
+      level: selectedLevel
+    };
+    addOfferMutation.mutate(offerData);
   };
 
   return (
@@ -383,6 +436,100 @@ export default function AdminDashboard() {
                 ))}
                 {specialEvents.length === 0 && (
                   <p className="text-muted-foreground text-center py-4">No special events</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Special Offers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <Form {...offerForm}>
+                <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4">
+                  <FormField
+                    control={offerForm.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Offer Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="20% off on all menu items" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={offerForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Get an exclusive discount on your favorite dishes" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={offerForm.control}
+                    name="validUntil"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valid Until</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={offerForm.control}
+                    name="level"
+                    render={({ field }) => (
+                      <FormItem className="hidden">
+                        <FormControl>
+                          <Input {...field} value={selectedLevel} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button 
+                    type="submit"
+                    disabled={addOfferMutation.isPending}
+                  >
+                    Create Offer
+                  </Button>
+                </form>
+              </Form>
+
+              <div className="space-y-4">
+                <h3 className="font-medium">Active Offers for {selectedLevel}</h3>
+                {specialOffers.map((offer) => (
+                  <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <h4 className="font-medium">{offer.title}</h4>
+                      <p className="text-sm text-muted-foreground">{offer.description}</p>
+                      <p className="text-sm">
+                        Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={offer.active}
+                      onCheckedChange={(checked) => 
+                        updateOfferMutation.mutate({ id: offer.id, active: checked })
+                      }
+                    />
+                  </div>
+                ))}
+                {specialOffers.length === 0 && (
+                  <p className="text-muted-foreground text-center py-4">No special offers</p>
                 )}
               </div>
             </div>
