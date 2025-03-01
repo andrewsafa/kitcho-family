@@ -1,0 +1,22 @@
+{
+  "customers": [
+    {
+      "id": 1,
+      "name": "Sharly Safa",
+      "mobile": "+201225334418",
+      "points": 0,
+      "level": "Bronze"
+    },
+    {
+      "id": 2,
+      "name": "Andrew Safa",
+      "mobile": "+201550504891",
+      "points": 0,
+      "level": "Bronze"
+    }
+  ],
+  "transactions": [],
+  "benefits": [],
+  "events": [],
+  "offers": []
+}
