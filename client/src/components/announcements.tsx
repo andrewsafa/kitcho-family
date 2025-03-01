@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { type SpecialEvent, type SpecialOffer } from "@shared/schema";
 import { CalendarClock, Star, Gift } from "lucide-react";
 import { format } from "date-fns";
+import { notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
 
 interface AnnouncementsProps {
   customerLevel: string;
@@ -16,6 +18,29 @@ export function Announcements({ customerLevel }: AnnouncementsProps) {
   const { data: specialOffers = [] } = useQuery<SpecialOffer[]>({
     queryKey: [`/api/offers/${customerLevel}`],
   });
+
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
+  useEffect(() => {
+    const now = new Date();
+    const activeEvents = specialEvents.filter(
+      event => event.active && new Date(event.endDate) >= now
+    );
+
+    // Notify of active events
+    activeEvents.forEach(event => {
+      notifySpecialEvent(event.name, event.multiplier, new Date(event.endDate));
+    });
+  }, [specialEvents]);
+
+  useEffect(() => {
+    // Notify of available offers
+    specialOffers.forEach(offer => {
+      notifySpecialOffer(offer.title, new Date(offer.validUntil));
+    });
+  }, [specialOffers]);
 
   const activeEvents = specialEvents.filter(
     event => event.active && new Date(event.endDate) >= new Date()
