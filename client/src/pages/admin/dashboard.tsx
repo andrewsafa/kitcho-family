@@ -211,8 +211,8 @@ export default function AdminDashboard() {
   });
 
   const updateBenefitMutation = useMutation({
-    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/benefits/${id}`, { active });
+    mutationFn: async ({ id, updates }: { id: number; updates: { active?: boolean; benefit?: string } }) => {
+      const res = await apiRequest("PATCH", `/api/benefits/${id}`, updates);
       return res.json();
     },
     onSuccess: () => {
@@ -539,6 +539,24 @@ export default function AdminDashboard() {
   useEffect(() => {
     requestNotificationPermission();
   }, []);
+
+  const deleteBenefitMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/benefits/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Benefit deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: [`/api/benefits/${selectedLevel}`] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
@@ -1029,7 +1047,8 @@ export default function AdminDashboard() {
               </form>
             </Form>
           </CardContent>
-        </Card><Card>
+        </Card>
+        <Card>
           <CardHeader>
             <CardTitle>Manage Benefits</CardTitle>
           </CardHeader>
@@ -1084,18 +1103,52 @@ export default function AdminDashboard() {
                 </form>
               </Form>
 
-              <div className="space-y-2">
+              <div className="space-y-4">
+                <h3>Active Benefits for {selectedLevel}</h3>
                 {benefits.map((benefit) => (
-                  <div key={benefit.id} className="flex items-center justify-between py-2">
-                    <span>{benefit.benefit}</span>
-                    <Switch
-                      checked={benefit.active}
-                      onCheckedChange={(checked) =>
-                        updateBenefitMutation.mutate({ id: benefit.id, active: checked })
-                      }
-                    />
+                  <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <h4 className="font-medium">{benefit.benefit}</h4>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newBenefit = window.prompt("Enter new benefit description:", benefit.benefit);
+                          if (newBenefit) {
+                            updateBenefitMutation.mutate({
+                              id: benefit.id,
+                              updates: { benefit: newBenefit }
+                            });
+                          }
+                        }}
+                      >
+                        تعديل
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (window.confirm("Are you sure you want to delete this benefit?")) {
+                            deleteBenefitMutation.mutate(benefit.id);
+                          }
+                        }}
+                      >
+                        حذف
+                      </Button>
+                      <Switch
+                        checked={benefit.active}
+                        onCheckedChange={(checked) =>
+                          updateBenefitMutation.mutate({ id: benefit.id, updates: { active: checked } })
+                        }
+                      />
+                    </div>
                   </div>
                 ))}
+                {benefits.length === 0 && (
+                  <p className="text-muted-foreground text-center py-4">No benefits for this level</p>
+                )}
               </div>
             </div>
           </CardContent>
