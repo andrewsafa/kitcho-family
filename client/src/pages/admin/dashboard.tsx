@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { type Customer, type InsertPointTransaction, type LevelBenefit, insertPointTransactionSchema, insertLevelBenefitSchema } from "@shared/schema";
+import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialEvent, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Search } from "lucide-react";
 import { z } from "zod";
+import { format } from "date-fns";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -27,6 +28,10 @@ export default function AdminDashboard() {
 
   const { data: benefits = [] } = useQuery<LevelBenefit[]>({
     queryKey: [`/api/benefits/${selectedLevel}`],
+  });
+
+  const { data: specialEvents = [] } = useQuery<SpecialEvent[]>({
+    queryKey: ["/api/events"],
   });
 
   // Points form
@@ -53,6 +58,18 @@ export default function AdminDashboard() {
     defaultValues: {
       level: "Bronze",
       benefit: ""
+    }
+  });
+
+  // Special Events form
+  const eventForm = useForm({
+    resolver: zodResolver(insertSpecialEventSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      multiplier: 2,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     }
   });
 
@@ -92,6 +109,35 @@ export default function AdminDashboard() {
         title: "Error",
         description: error.message
       });
+    }
+  });
+
+  const addEventMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof insertSpecialEventSchema>) => {
+      const res = await apiRequest("POST", "/api/events", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Special event created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      eventForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  });
+
+  const updateEventMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/events/${id}`, { active });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
     }
   });
 
@@ -135,6 +181,10 @@ export default function AdminDashboard() {
       level: selectedLevel // Use the selected level from state
     };
     addBenefitMutation.mutate(benefitData);
+  };
+
+  const onEventSubmit = (data: z.infer<typeof insertSpecialEventSchema>) => {
+    addEventMutation.mutate(data);
   };
 
   return (
@@ -217,6 +267,125 @@ export default function AdminDashboard() {
                 </Button>
               </form>
             </Form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Special Events</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <Form {...eventForm}>
+                <form onSubmit={eventForm.handleSubmit(onEventSubmit)} className="space-y-4">
+                  <FormField
+                    control={eventForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Event Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Summer Sale" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={eventForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Double points on all purchases" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex gap-4">
+                    <FormField
+                      control={eventForm.control}
+                      name="multiplier"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Point Multiplier</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="1"
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <FormField
+                      control={eventForm.control}
+                      name="startDate"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Start Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={eventForm.control}
+                      name="endDate"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>End Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <Button 
+                    type="submit"
+                    disabled={addEventMutation.isPending}
+                  >
+                    Create Event
+                  </Button>
+                </form>
+              </Form>
+
+              <div className="space-y-4">
+                <h3 className="font-medium">Active Events</h3>
+                {specialEvents.map((event) => (
+                  <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <h4 className="font-medium">{event.name}</h4>
+                      <p className="text-sm text-muted-foreground">{event.description}</p>
+                      <p className="text-sm">
+                        {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
+                      </p>
+                      <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
+                    </div>
+                    <Switch
+                      checked={event.active}
+                      onCheckedChange={(checked) => 
+                        updateEventMutation.mutate({ id: event.id, active: checked })
+                      }
+                    />
+                  </div>
+                ))}
+                {specialEvents.length === 0 && (
+                  <p className="text-muted-foreground text-center py-4">No special events</p>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
 

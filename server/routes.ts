@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema } from "@shared/schema";
+import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth, requireAdmin } from "./auth";
 
@@ -89,6 +89,37 @@ export async function registerRoutes(app: Express) {
       } else {
         res.status(500).json({ message: "Internal server error" });
       }
+    }
+  });
+
+  // Special Events routes
+  app.get("/api/events", async (_req, res) => {
+    const events = await storage.listActiveEvents();
+    res.json(events);
+  });
+
+  app.post("/api/events", requireAdmin, async (req, res) => {
+    try {
+      const eventData = insertSpecialEventSchema.parse(req.body);
+      const event = await storage.createEvent(eventData);
+      res.status(201).json(event);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: fromZodError(error).message });
+      } else {
+        res.status(500).json({ message: "Internal server error" });
+      }
+    }
+  });
+
+  app.patch("/api/events/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { active } = req.body;
+      const event = await storage.updateEventStatus(id, active);
+      res.json(event);
+    } catch (error) {
+      res.status(404).json({ message: "Event not found" });
     }
   });
 

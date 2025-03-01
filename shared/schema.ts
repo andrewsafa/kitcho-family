@@ -32,6 +32,16 @@ export const levelBenefits = pgTable("level_benefits", {
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
 });
 
+export const specialEvents = pgTable("special_events", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  multiplier: integer("multiplier").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  active: boolean("active").notNull().default(true),
+});
+
 export const insertAdminSchema = createInsertSchema(admins).pick({
   username: true,
   password: true,
@@ -59,6 +69,18 @@ export const insertLevelBenefitSchema = createInsertSchema(levelBenefits).pick({
   benefit: true,
 });
 
+export const insertSpecialEventSchema = createInsertSchema(specialEvents).pick({
+  name: true,
+  description: true,
+  multiplier: true,
+  startDate: true,
+  endDate: true,
+}).extend({
+  multiplier: z.number().min(1, "Multiplier must be at least 1"),
+  startDate: z.string().transform(str => new Date(str)),
+  endDate: z.string().transform(str => new Date(str)),
+});
+
 export type Admin = typeof admins.$inferSelect;
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type Customer = typeof customers.$inferSelect;
@@ -67,6 +89,8 @@ export type PointTransaction = typeof pointTransactions.$inferSelect;
 export type InsertPointTransaction = z.infer<typeof insertPointTransactionSchema>;
 export type LevelBenefit = typeof levelBenefits.$inferSelect;
 export type InsertLevelBenefit = z.infer<typeof insertLevelBenefitSchema>;
+export type SpecialEvent = typeof specialEvents.$inferSelect;
+export type InsertSpecialEvent = z.infer<typeof insertSpecialEventSchema>;
 
 export const LOYALTY_LEVELS = {
   Bronze: { min: 0, max: 100000 },
@@ -84,4 +108,22 @@ export function calculateLevel(points: number): LoyaltyLevel {
     }
   }
   return "Bronze";
+}
+
+export function calculatePointsWithMultiplier(basePoints: number, events: SpecialEvent[]): number {
+  const now = new Date();
+  const activeMultipliers = events
+    .filter(event =>
+      event.active &&
+      now >= event.startDate &&
+      now <= event.endDate
+    )
+    .map(event => event.multiplier);
+
+  // If no active multipliers, return base points
+  if (activeMultipliers.length === 0) return basePoints;
+
+  // Use the highest multiplier
+  const maxMultiplier = Math.max(...activeMultipliers);
+  return basePoints * maxMultiplier;
 }

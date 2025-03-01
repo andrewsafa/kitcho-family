@@ -7,7 +7,10 @@ import {
   type InsertLevelBenefit,
   type Admin,
   type InsertAdmin,
-  calculateLevel
+  type SpecialEvent,
+  type InsertSpecialEvent,
+  calculateLevel,
+  calculatePointsWithMultiplier
 } from "@shared/schema";
 
 export interface IStorage {
@@ -24,6 +27,11 @@ export interface IStorage {
   getAdmin(id: number): Promise<Admin | undefined>;
   getAdminByUsername(username: string): Promise<Admin | undefined>;
   createAdmin(admin: InsertAdmin): Promise<Admin>;
+  // Special Events methods
+  listActiveEvents(): Promise<SpecialEvent[]>;
+  getEvent(id: number): Promise<SpecialEvent | undefined>;
+  createEvent(event: InsertSpecialEvent): Promise<SpecialEvent>;
+  updateEventStatus(id: number, active: boolean): Promise<SpecialEvent>;
 }
 
 export class MemStorage implements IStorage {
@@ -31,20 +39,24 @@ export class MemStorage implements IStorage {
   private transactions: Map<number, PointTransaction>;
   private benefits: Map<number, LevelBenefit>;
   private admins: Map<number, Admin>;
+  private events: Map<number, SpecialEvent>;
   private currentCustomerId: number;
   private currentTransactionId: number;
   private currentBenefitId: number;
   private currentAdminId: number;
+  private currentEventId: number;
 
   constructor() {
     this.customers = new Map();
     this.transactions = new Map();
     this.benefits = new Map();
     this.admins = new Map();
+    this.events = new Map();
     this.currentCustomerId = 1;
     this.currentTransactionId = 1;
     this.currentBenefitId = 1;
     this.currentAdminId = 1;
+    this.currentEventId = 1;
   }
 
   async getCustomer(id: number): Promise<Customer | undefined> {
@@ -80,16 +92,21 @@ export class MemStorage implements IStorage {
     const txnId = this.currentTransactionId++;
     const timestamp = new Date();
 
+    // Get active events to calculate multiplier
+    const events = await this.listActiveEvents();
+    const multipliedPoints = calculatePointsWithMultiplier(transaction.points, events);
+
     const txn: PointTransaction = {
       id: txnId,
       ...transaction,
+      points: multipliedPoints, // Store the multiplied points
       timestamp
     };
     this.transactions.set(txnId, txn);
 
     const updatedCustomer: Customer = {
       ...customer,
-      points: customer.points + transaction.points,
+      points: customer.points + multipliedPoints,
     };
     updatedCustomer.level = calculateLevel(updatedCustomer.points);
 
@@ -154,6 +171,37 @@ export class MemStorage implements IStorage {
     const newAdmin: Admin = { id, ...admin };
     this.admins.set(id, newAdmin);
     return newAdmin;
+  }
+
+  async listActiveEvents(): Promise<SpecialEvent[]> {
+    return Array.from(this.events.values())
+      .filter(event => event.active)
+      .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+  }
+
+  async getEvent(id: number): Promise<SpecialEvent | undefined> {
+    return this.events.get(id);
+  }
+
+  async createEvent(event: InsertSpecialEvent): Promise<SpecialEvent> {
+    const id = this.currentEventId++;
+    const newEvent: SpecialEvent = {
+      id,
+      ...event,
+      active: true
+    };
+    this.events.set(id, newEvent);
+    return newEvent;
+  }
+
+  async updateEventStatus(id: number, active: boolean): Promise<SpecialEvent> {
+    const event = await this.getEvent(id);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+    const updatedEvent: SpecialEvent = { ...event, active };
+    this.events.set(id, updatedEvent);
+    return updatedEvent;
   }
 }
 
