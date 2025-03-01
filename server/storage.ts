@@ -29,6 +29,7 @@ export interface IStorage {
   getAdmin(id: number): Promise<Admin | undefined>;
   getAdminByUsername(username: string): Promise<Admin | undefined>;
   createAdmin(admin: InsertAdmin): Promise<Admin>;
+  updateAdminPassword(id: number, hashedPassword: string): Promise<Admin>; // Added method
   // Special Events methods
   listActiveEvents(): Promise<SpecialEvent[]>;
   getEvent(id: number): Promise<SpecialEvent | undefined>;
@@ -181,6 +182,19 @@ export class MemStorage implements IStorage {
     const newAdmin: Admin = { id, ...admin };
     this.admins.set(id, newAdmin);
     return newAdmin;
+  }
+
+  async updateAdminPassword(id: number, hashedPassword: string): Promise<Admin> {
+    const admin = await this.getAdmin(id);
+    if (!admin) {
+      throw new Error("Admin not found");
+    }
+    const updatedAdmin: Admin = {
+      ...admin,
+      password: hashedPassword
+    };
+    this.admins.set(id, updatedAdmin);
+    return updatedAdmin;
   }
 
   async listActiveEvents(): Promise<SpecialEvent[]> {

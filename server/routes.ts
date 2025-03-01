@@ -154,5 +154,22 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.post("/api/admin/change-password", requireAdmin, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const admin = await storage.getAdmin(req.user!.id);
+
+      if (!admin || !(await comparePasswords(currentPassword, admin.password))) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      const updatedAdmin = await storage.updateAdminPassword(admin.id, hashedPassword);
+      res.json(updatedAdmin);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update password" });
+    }
+  });
+
   return createServer(app);
 }

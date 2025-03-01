@@ -89,6 +89,25 @@ export default function AdminDashboard() {
     }
   });
 
+  // Password change form
+  const changePasswordForm = useForm({
+    resolver: zodResolver(
+      z.object({
+        currentPassword: z.string().min(1, "Current password is required"),
+        newPassword: z.string().min(6, "New password must be at least 6 characters"),
+        confirmPassword: z.string()
+      }).refine(data => data.newPassword === data.confirmPassword, {
+        message: "Passwords do not match",
+        path: ["confirmPassword"]
+      })
+    ),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    }
+  });
+
 
   const addPointsMutation = useMutation({
     mutationFn: async (data: InsertPointTransaction) => {
@@ -200,6 +219,26 @@ export default function AdminDashboard() {
     }
   });
 
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const res = await apiRequest("POST", "/api/admin/change-password", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password updated successfully"
+      });
+      changePasswordForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to update password",
+        description: error.message
+      });
+    }
+  });
+
   const handleSearch = async (mobile: string) => {
     const customer = customers.find(c => c.mobile === mobile);
     setSelectedCustomer(customer || null);
@@ -242,6 +281,13 @@ export default function AdminDashboard() {
       level: selectedLevel
     };
     addOfferMutation.mutate(offerData);
+  };
+
+  const onChangePasswordSubmit = (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+    changePasswordMutation.mutate({
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword
+    });
   };
 
   useEffect(() => {
@@ -541,6 +587,63 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Change Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Form {...changePasswordForm}>
+              <form onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)} className="space-y-4">
+                <FormField
+                  control={changePasswordForm.control}
+                  name="currentPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={changePasswordForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={changePasswordForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  disabled={changePasswordMutation.isPending}
+                >
+                  Update Password
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
 
