@@ -32,6 +32,7 @@ interface BackupConfig {
   maxBackups: number;
   enabled: boolean;
   backupDir: string;
+  emailTo?: string;
 }
 
 interface BackupHistory {
@@ -620,6 +621,23 @@ export default function AdminDashboard() {
               </div>
 
               <div className="space-y-2">
+                <label className="text-sm font-medium">Email Notifications</label>
+                <Input
+                  type="email"
+                  placeholder="Enter email address for backup notifications"
+                  value={backupConfig?.emailTo || ''}
+                  onChange={(e) =>
+                    updateBackupConfigMutation.mutate({
+                      emailTo: e.target.value
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  Backups will be automatically sent to this email address
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-medium">Maximum Backups</label>
                 <Input
                   type="number"
@@ -1011,9 +1029,7 @@ export default function AdminDashboard() {
               </form>
             </Form>
           </CardContent>
-        </Card>
-
-        <Card>
+        </Card><Card>
           <CardHeader>
             <CardTitle>Manage Benefits</CardTitle>
           </CardHeader>
@@ -1033,7 +1049,6 @@ export default function AdminDashboard() {
                   <SelectItem value="Diamond">Diamond</SelectItem>
                 </SelectContent>
               </Select>
-
               <Form {...benefitForm}>
                 <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y-4">
                   <FormField

@@ -3,12 +3,20 @@ import fs from 'fs/promises';
 import path from 'path';
 import dayjs from 'dayjs';
 import { storage } from './storage';
+import sgMail from '@sendgrid/mail';
+
+if (!process.env.SENDGRID_API_KEY) {
+  console.warn("SENDGRID_API_KEY not set, email notifications will be disabled");
+} else {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 interface BackupConfig {
   frequency: string; // cron expression
   maxBackups: number;
   enabled: boolean;
   backupDir: string;
+  emailTo?: string; // recipient email address
 }
 
 interface BackupHistory {
@@ -40,6 +48,8 @@ class BackupScheduler {
       this.history = JSON.parse(data);
     } catch (error) {
       this.history = [];
+      // Create history file if it doesn't exist
+      await this.saveHistory();
     }
   }
 
@@ -49,7 +59,7 @@ class BackupScheduler {
 
   async configure(config: Partial<BackupConfig>) {
     this.config = { ...this.config, ...config };
-    
+
     // Ensure backup directory exists
     await fs.mkdir(this.config.backupDir, { recursive: true });
 
@@ -60,6 +70,9 @@ class BackupScheduler {
     if (this.config.enabled && cron.validate(this.config.frequency)) {
       this.cronJob = cron.schedule(this.config.frequency, () => this.createBackup());
     }
+
+    // Save configuration
+    await fs.writeFile('backup-config.json', JSON.stringify(this.config, null, 2));
   }
 
   async createBackup() {
@@ -71,17 +84,18 @@ class BackupScheduler {
       // Export data
       const data = await storage.exportData();
       const jsonData = JSON.stringify(data, null, 2);
-      
+
       // Save backup
       await fs.writeFile(filepath, jsonData);
 
       // Update history
       const stats = await fs.stat(filepath);
-      this.history.push({
+      const backupEntry = {
         timestamp: dayjs().toISOString(),
         filename,
         size: stats.size
-      });
+      };
+      this.history.push(backupEntry);
 
       // Maintain only maxBackups number of backups
       const backupFiles = await fs.readdir(this.config.backupDir);
@@ -101,10 +115,51 @@ class BackupScheduler {
       }
 
       await this.saveHistory();
+
+      // Send email if configured
+      if (this.config.emailTo && process.env.SENDGRID_API_KEY) {
+        try {
+          const msg = {
+            to: this.config.emailTo,
+            from: 'noreply@kitchofamily.com', // Use your verified sender
+            subject: `Kitcho Family Backup - ${timestamp}`,
+            text: 'Your backup is attached.',
+            attachments: [
+              {
+                content: Buffer.from(jsonData).toString('base64'),
+                filename,
+                type: 'application/json',
+                disposition: 'attachment'
+              }
+            ]
+          };
+
+          await sgMail.send(msg);
+          console.log(`Backup email sent to ${this.config.emailTo}`);
+        } catch (error) {
+          console.error('Failed to send backup email:', error);
+        }
+      }
+
       return { success: true, filename };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Backup failed:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  async loadConfig() {
+    try {
+      const data = await fs.readFile('backup-config.json', 'utf8');
+      this.config = JSON.parse(data);
+      // Re-initialize cron job with loaded config
+      if (this.config.enabled && cron.validate(this.config.frequency)) {
+        if (this.cronJob) this.cronJob.stop();
+        this.cronJob = cron.schedule(this.config.frequency, () => this.createBackup());
+      }
+    } catch (error) {
+      // Use default config if file doesn't exist
+      await this.configure(this.config);
     }
   }
 
@@ -121,4 +176,6 @@ class BackupScheduler {
   }
 }
 
+// Create and initialize the backup scheduler
 export const backupScheduler = new BackupScheduler();
+backupScheduler.loadConfig().catch(console.error);
