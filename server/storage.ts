@@ -321,6 +321,33 @@ export class PostgresStorage implements IStorage {
       throw error;
     }
   }
+  async testConnection(): Promise<boolean> {
+    try {
+      // Test basic CRUD operations
+
+      // 1. Create a test customer
+      const testCustomer = await this.createCustomer({
+        name: "Test User",
+        mobile: "+1234567890"
+      });
+
+      // 2. Read the customer
+      const retrievedCustomer = await this.getCustomer(testCustomer.id);
+      if (!retrievedCustomer) throw new Error("Failed to retrieve test customer");
+
+      // 3. Delete the test customer
+      await this.deleteCustomer(testCustomer.id);
+
+      // 4. Verify deletion
+      const deletedCustomer = await this.getCustomer(testCustomer.id);
+      if (deletedCustomer) throw new Error("Failed to delete test customer");
+
+      return true;
+    } catch (error) {
+      console.error('Database test failed:', error);
+      return false;
+    }
+  }
 }
 
 // Export a singleton instance
