@@ -20,6 +20,7 @@ export interface IStorage {
   getCustomerByMobile(mobile: string): Promise<Customer | undefined>;
   createCustomer(customer: InsertCustomer): Promise<Customer>;
   listCustomers(): Promise<Customer[]>;
+  deleteCustomer(id: number): Promise<void>; 
   addPoints(transaction: InsertPointTransaction): Promise<Customer>;
   getTransactions(customerId: number): Promise<PointTransaction[]>;
   getLevelBenefits(level: string): Promise<LevelBenefit[]>;
@@ -29,7 +30,7 @@ export interface IStorage {
   getAdmin(id: number): Promise<Admin | undefined>;
   getAdminByUsername(username: string): Promise<Admin | undefined>;
   createAdmin(admin: InsertAdmin): Promise<Admin>;
-  updateAdminPassword(id: number, hashedPassword: string): Promise<Admin>; // Added method
+  updateAdminPassword(id: number, hashedPassword: string): Promise<Admin>; 
   // Special Events methods
   listActiveEvents(): Promise<SpecialEvent[]>;
   getEvent(id: number): Promise<SpecialEvent | undefined>;
@@ -94,6 +95,25 @@ export class MemStorage implements IStorage {
     return Array.from(this.customers.values());
   }
 
+  async deleteCustomer(id: number): Promise<void> {
+    // Check if customer exists
+    const customer = await this.getCustomer(id);
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+
+    // Delete customer
+    this.customers.delete(id);
+
+    // Delete all associated transactions
+    const customerTransactions = Array.from(this.transactions.entries())
+      .filter(([_, txn]) => txn.customerId === id);
+
+    for (const [txnId] of customerTransactions) {
+      this.transactions.delete(txnId);
+    }
+  }
+
   async addPoints(transaction: InsertPointTransaction): Promise<Customer> {
     const customer = await this.getCustomer(transaction.customerId);
     if (!customer) {
@@ -110,7 +130,7 @@ export class MemStorage implements IStorage {
     const txn: PointTransaction = {
       id: txnId,
       ...transaction,
-      points: multipliedPoints, // Store the multiplied points
+      points: multipliedPoints, 
       timestamp
     };
     this.transactions.set(txnId, txn);

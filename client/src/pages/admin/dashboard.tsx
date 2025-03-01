@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next"; // Add translation hook
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialEvent, type SpecialOffer, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema } from "@shared/schema";
@@ -19,7 +18,6 @@ import { format } from "date-fns";
 import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
 
 export default function AdminDashboard() {
-  const { t } = useTranslation(); // Add translation hook
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -267,6 +265,24 @@ export default function AdminDashboard() {
     }
   });
 
+  const deleteCustomerMutation = useMutation({
+    mutationFn: async (customerId: number) => {
+      const res = await apiRequest("DELETE", `/api/customers/${customerId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Customer deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  });
+
   const handleSearch = async (mobile: string) => {
     const customer = customers.find(c => c.mobile === mobile);
     setSelectedCustomer(customer || null);
@@ -351,6 +367,12 @@ export default function AdminDashboard() {
     });
   };
 
+  const handleDeleteCustomer = (customer: Customer) => {
+    if (window.confirm(`Are you sure you want to delete customer ${customer.name}?`)) {
+      deleteCustomerMutation.mutate(customer.id);
+    }
+  };
+
   useEffect(() => {
     requestNotificationPermission();
   }, []);
@@ -361,15 +383,15 @@ export default function AdminDashboard() {
         <div className="text-center mb-8">
           <img
             src="/logo.png"
-            alt={t('kitcho_family_logo')}
+            alt="Kitcho Family Logo"
             className="h-24 mx-auto"
           />
-          <h1 className="text-2xl font-bold mt-4">{t('admin_dashboard')}</h1>
+          <h1 className="text-2xl font-bold mt-4">Admin Dashboard</h1>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('add_points')}</CardTitle>
+            <CardTitle>Add Points</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -380,10 +402,10 @@ export default function AdminDashboard() {
                     name="mobile"
                     render={({ field }) => (
                       <FormItem className="flex-1">
-                        <FormLabel>{t('mobile_number')}</FormLabel>
+                        <FormLabel>Mobile Number</FormLabel>
                         <FormControl>
                           <div className="flex gap-2">
-                            <Input placeholder={t('mobile_placeholder')} {...field} />
+                            <Input placeholder="Enter mobile number" {...field} />
                             <Button
                               type="button"
                               onClick={() => handleSearch(field.value)}
@@ -401,7 +423,7 @@ export default function AdminDashboard() {
                     name="points"
                     render={({ field }) => (
                       <FormItem className="flex-1">
-                        <FormLabel>{t('points')}</FormLabel>
+                        <FormLabel>Points</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -419,7 +441,7 @@ export default function AdminDashboard() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('description')}</FormLabel>
+                      <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -431,7 +453,7 @@ export default function AdminDashboard() {
                   type="submit"
                   disabled={!selectedCustomer || addPointsMutation.isPending}
                 >
-                  {t('add_points')}
+                  Add Points
                 </Button>
               </form>
             </Form>
@@ -440,7 +462,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('special_events')}</CardTitle>
+            <CardTitle>Special Events</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -451,9 +473,9 @@ export default function AdminDashboard() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('event_name')}</FormLabel>
+                        <FormLabel>Event Name</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('event_name_placeholder')} {...field} />
+                          <Input placeholder="Enter event name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -464,9 +486,9 @@ export default function AdminDashboard() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('description')}</FormLabel>
+                        <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('event_description_placeholder')} {...field} />
+                          <Input placeholder="Enter event description" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -478,7 +500,7 @@ export default function AdminDashboard() {
                       name="multiplier"
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormLabel>{t('point_multiplier')}</FormLabel>
+                          <FormLabel>Point Multiplier</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -498,7 +520,7 @@ export default function AdminDashboard() {
                       name="startDate"
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormLabel>{t('start_date')}</FormLabel>
+                          <FormLabel>Start Date</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -511,7 +533,7 @@ export default function AdminDashboard() {
                       name="endDate"
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormLabel>{t('end_date')}</FormLabel>
+                          <FormLabel>End Date</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -524,13 +546,13 @@ export default function AdminDashboard() {
                     type="submit"
                     disabled={addEventMutation.isPending}
                   >
-                    {t('create_event')}
+                    Create Event
                   </Button>
                 </form>
               </Form>
 
               <div className="space-y-4">
-                <h3 className="font-medium">{t('active_events')}</h3>
+                <h3>Active Events</h3>
                 {specialEvents.map((event) => (
                   <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
@@ -539,7 +561,7 @@ export default function AdminDashboard() {
                       <p className="text-sm">
                         {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
                       </p>
-                      <p className="text-sm font-medium text-primary">{event.multiplier}x {t('points')}</p>
+                      <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
                     </div>
                     <Switch
                       checked={event.active}
@@ -550,7 +572,7 @@ export default function AdminDashboard() {
                   </div>
                 ))}
                 {specialEvents.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">{t('no_special_events')}</p>
+                  <p className="text-muted-foreground text-center py-4">No special events</p>
                 )}
               </div>
             </div>
@@ -559,7 +581,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('special_offers')}</CardTitle>
+            <CardTitle>Special Offers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -570,9 +592,9 @@ export default function AdminDashboard() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('offer_title')}</FormLabel>
+                        <FormLabel>Offer Title</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('offer_title_placeholder')} {...field} />
+                          <Input placeholder="Enter offer title" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -583,9 +605,9 @@ export default function AdminDashboard() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('description')}</FormLabel>
+                        <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('offer_description_placeholder')} {...field} />
+                          <Input placeholder="Enter offer description" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -596,7 +618,7 @@ export default function AdminDashboard() {
                     name="validUntil"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('valid_until')}</FormLabel>
+                        <FormLabel>Valid Until</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -619,20 +641,20 @@ export default function AdminDashboard() {
                     type="submit"
                     disabled={addOfferMutation.isPending}
                   >
-                    {t('create_offer')}
+                    Create Offer
                   </Button>
                 </form>
               </Form>
 
               <div className="space-y-4">
-                <h3 className="font-medium">{t('active_offers_for')} {selectedLevel}</h3>
+                <h3>Active Offers for {selectedLevel}</h3>
                 {specialOffers.map((offer) => (
                   <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                       <h4 className="font-medium">{offer.title}</h4>
                       <p className="text-sm text-muted-foreground">{offer.description}</p>
                       <p className="text-sm">
-                        {t('valid_until')} {format(new Date(offer.validUntil), "MMM d, yyyy")}
+                        Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
                       </p>
                     </div>
                     <Switch
@@ -644,7 +666,7 @@ export default function AdminDashboard() {
                   </div>
                 ))}
                 {specialOffers.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">{t('no_special_offers')}</p>
+                  <p className="text-muted-foreground text-center py-4">No special offers</p>
                 )}
               </div>
             </div>
@@ -653,7 +675,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('change_password')}</CardTitle>
+            <CardTitle>Change Password</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...changePasswordForm}>
@@ -663,7 +685,7 @@ export default function AdminDashboard() {
                   name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('current_password')}</FormLabel>
+                      <FormLabel>Current Password</FormLabel>
                       <FormControl>
                         <Input type="password" {...field} />
                       </FormControl>
@@ -676,7 +698,7 @@ export default function AdminDashboard() {
                   name="newPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('new_password')}</FormLabel>
+                      <FormLabel>New Password</FormLabel>
                       <FormControl>
                         <Input type="password" {...field} />
                       </FormControl>
@@ -689,7 +711,7 @@ export default function AdminDashboard() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('confirm_password')}</FormLabel>
+                      <FormLabel>Confirm Password</FormLabel>
                       <FormControl>
                         <Input type="password" {...field} />
                       </FormControl>
@@ -701,7 +723,7 @@ export default function AdminDashboard() {
                   type="submit"
                   disabled={changePasswordMutation.isPending}
                 >
-                  {t('update_password')}
+                  Update Password
                 </Button>
               </form>
             </Form>
@@ -710,7 +732,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('manage_benefits')}</CardTitle>
+            <CardTitle>Manage Benefits</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -719,13 +741,13 @@ export default function AdminDashboard() {
                 onValueChange={setSelectedLevel}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={t('select_level')} />
+                  <SelectValue placeholder="Select Level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Bronze">{t('bronze')}</SelectItem>
-                  <SelectItem value="Silver">{t('silver')}</SelectItem>
-                  <SelectItem value="Gold">{t('gold')}</SelectItem>
-                  <SelectItem value="Diamond">{t('diamond')}</SelectItem>
+                  <SelectItem value="Bronze">Bronze</SelectItem>
+                  <SelectItem value="Silver">Silver</SelectItem>
+                  <SelectItem value="Gold">Gold</SelectItem>
+                  <SelectItem value="Diamond">Diamond</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -736,9 +758,9 @@ export default function AdminDashboard() {
                     name="benefit"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('new_benefit')}</FormLabel>
+                        <FormLabel>New Benefit</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('new_benefit_placeholder')} {...field} />
+                          <Input placeholder="Enter new benefit" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -759,7 +781,7 @@ export default function AdminDashboard() {
                     type="submit"
                     disabled={addBenefitMutation.isPending}
                   >
-                    {t('add_benefit')}
+                    Add Benefit
                   </Button>
                 </form>
               </Form>
@@ -783,14 +805,14 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('customers')}</CardTitle>
+            <CardTitle>Customers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Search className="h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={t('customer_search')}
+                  placeholder="Search customers"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="max-w-sm"
@@ -799,11 +821,11 @@ export default function AdminDashboard() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('name')}</TableHead>
-                    <TableHead>{t('mobile')}</TableHead>
-                    <TableHead>{t('points')}</TableHead>
-                    <TableHead>{t('level')}</TableHead>
-                    <TableHead>{t('actions')}</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Mobile</TableHead>
+                    <TableHead>Points</TableHead>
+                    <TableHead>Level</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -812,23 +834,32 @@ export default function AdminDashboard() {
                       <TableCell>{customer.name}</TableCell>
                       <TableCell>{customer.mobile}</TableCell>
                       <TableCell>{customer.points}</TableCell>
-                      <TableCell>{t(customer.level.toLowerCase())}</TableCell>
+                      <TableCell>{customer.level}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeletePoints(customer)}
-                          disabled={customer.points <= 0}
-                        >
-                          {t('delete_points')}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeletePoints(customer)}
+                            disabled={customer.points <= 0}
+                          >
+                            Delete Points
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteCustomer(customer)}
+                          >
+                            Delete Customer
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                   {filteredCustomers.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        {t('no_customers')}
+                        No customers
                       </TableCell>
                     </TableRow>
                   )}
