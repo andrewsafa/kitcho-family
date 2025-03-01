@@ -31,6 +31,14 @@ i18n
           "silver": "Silver",
           "gold": "Gold",
           "diamond": "Diamond",
+          "member": "Member",
+          "your_points": "Your Points",
+          "your_level": "Your Level",
+          "your_benefits": "Your Benefits",
+          "your_progress": "Your Progress",
+          "next_level": "Next Level",
+          "points_needed": "Points needed",
+          "current_points": "Current Points",
 
           // Admin Dashboard
           "admin_dashboard": "Admin Dashboard",
@@ -59,6 +67,12 @@ i18n
           "current_password": "Current Password",
           "new_password": "New Password",
           "confirm_password": "Confirm Password",
+          "keep_earning": "Keep earning points to reach the next level!",
+          "actions": "Actions",
+          "search": "Search",
+          "customers": "Customers",
+          "name": "Name",
+          "mobile": "Mobile",
 
           // Form Validations
           "name_required": "Name must be at least 2 characters",
@@ -99,6 +113,14 @@ i18n
           "silver": "فضي",
           "gold": "ذهبي",
           "diamond": "ماسي",
+          "member": "عضو",
+          "your_points": "نقاطك",
+          "your_level": "مستواك",
+          "your_benefits": "مزاياك",
+          "your_progress": "تقدمك",
+          "next_level": "المستوى التالي",
+          "points_needed": "النقاط المطلوبة",
+          "current_points": "النقاط الحالية",
 
           // Admin Dashboard
           "admin_dashboard": "لوحة تحكم المسؤول",
@@ -127,6 +149,12 @@ i18n
           "current_password": "كلمة المرور الحالية",
           "new_password": "كلمة المرور الجديدة",
           "confirm_password": "تأكيد كلمة المرور",
+          "keep_earning": "واصل كسب النقاط للوصول إلى المستوى التالي!",
+          "actions": "العمليات",
+          "search": "بحث",
+          "customers": "العملاء",
+          "name": "الاسم",
+          "mobile": "الجوال",
 
           // Form Validations
           "name_required": "يجب أن يكون الاسم مكوناً من حرفين على الأقل",
