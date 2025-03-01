@@ -94,9 +94,15 @@ export class MemStorage implements IStorage {
   }
 
   async getLevelBenefits(level: string): Promise<LevelBenefit[]> {
-    return Array.from(this.benefits.values())
-      .filter(b => b.level === level && b.active)
+    // Strict equality check for level matching
+    const benefitsForLevel = Array.from(this.benefits.values())
+      .filter(benefit => {
+        return benefit.level === level && benefit.active;
+      })
       .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+
+    console.log(`Fetching benefits for level ${level}:`, benefitsForLevel);
+    return benefitsForLevel;
   }
 
   async addLevelBenefit(benefit: InsertLevelBenefit): Promise<LevelBenefit> {
@@ -107,6 +113,7 @@ export class MemStorage implements IStorage {
       active: true,
       lastUpdated: new Date()
     };
+    console.log(`Adding new benefit for level ${benefit.level}:`, newBenefit);
     this.benefits.set(id, newBenefit);
     return newBenefit;
   }
