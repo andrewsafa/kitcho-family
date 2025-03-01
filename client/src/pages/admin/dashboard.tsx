@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Search } from "lucide-react";
 import { z } from "zod";
 import { format } from "date-fns";
+import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -94,8 +95,9 @@ export default function AdminDashboard() {
       const res = await apiRequest("POST", "/api/points", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({ title: "Points added successfully" });
+      notifyPointsAdded(data.points, data.totalPoints);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       form.reset();
       setSelectedCustomer(null);
@@ -133,8 +135,9 @@ export default function AdminDashboard() {
       const res = await apiRequest("POST", "/api/events", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({ title: "Special event created successfully" });
+      notifySpecialEvent(data.name, data.multiplier, new Date(data.endDate));
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       eventForm.reset();
     },
@@ -172,8 +175,9 @@ export default function AdminDashboard() {
       const res = await apiRequest("POST", "/api/offers", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({ title: "Special offer created successfully" });
+      notifySpecialOffer(data.title, new Date(data.validUntil));
       queryClient.invalidateQueries({ queryKey: [`/api/offers/${selectedLevel}`] });
       offerForm.reset();
     },
@@ -240,13 +244,17 @@ export default function AdminDashboard() {
     addOfferMutation.mutate(offerData);
   };
 
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center mb-8">
-          <img 
-            src="/logo.png" 
-            alt="Kitcho Family Logo" 
+          <img
+            src="/logo.png"
+            alt="Kitcho Family Logo"
             className="h-24 mx-auto"
           />
           <h1 className="text-2xl font-bold mt-4">Admin Dashboard</h1>
@@ -269,7 +277,7 @@ export default function AdminDashboard() {
                         <FormControl>
                           <div className="flex gap-2">
                             <Input placeholder="+1234567890" {...field} />
-                            <Button 
+                            <Button
                               type="button"
                               onClick={() => handleSearch(field.value)}
                             >
@@ -288,8 +296,8 @@ export default function AdminDashboard() {
                       <FormItem className="flex-1">
                         <FormLabel>Points</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             {...field}
                             onChange={(e) => field.onChange(e.target.valueAsNumber)}
                           />
@@ -312,7 +320,7 @@ export default function AdminDashboard() {
                     </FormItem>
                   )}
                 />
-                <Button 
+                <Button
                   type="submit"
                   disabled={!selectedCustomer || addPointsMutation.isPending}
                 >
@@ -365,8 +373,8 @@ export default function AdminDashboard() {
                         <FormItem className="flex-1">
                           <FormLabel>Point Multiplier</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
+                            <Input
+                              type="number"
                               min="1"
                               {...field}
                               onChange={(e) => field.onChange(e.target.valueAsNumber)}
@@ -405,7 +413,7 @@ export default function AdminDashboard() {
                       )}
                     />
                   </div>
-                  <Button 
+                  <Button
                     type="submit"
                     disabled={addEventMutation.isPending}
                   >
@@ -428,7 +436,7 @@ export default function AdminDashboard() {
                     </div>
                     <Switch
                       checked={event.active}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         updateEventMutation.mutate({ id: event.id, active: checked })
                       }
                     />
@@ -500,7 +508,7 @@ export default function AdminDashboard() {
                       </FormItem>
                     )}
                   />
-                  <Button 
+                  <Button
                     type="submit"
                     disabled={addOfferMutation.isPending}
                   >
@@ -522,7 +530,7 @@ export default function AdminDashboard() {
                     </div>
                     <Switch
                       checked={offer.active}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         updateOfferMutation.mutate({ id: offer.id, active: checked })
                       }
                     />
@@ -542,8 +550,8 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <Select 
-                value={selectedLevel} 
+              <Select
+                value={selectedLevel}
                 onValueChange={setSelectedLevel}
               >
                 <SelectTrigger>
@@ -583,7 +591,7 @@ export default function AdminDashboard() {
                       </FormItem>
                     )}
                   />
-                  <Button 
+                  <Button
                     type="submit"
                     disabled={addBenefitMutation.isPending}
                   >
@@ -598,7 +606,7 @@ export default function AdminDashboard() {
                     <span>{benefit.benefit}</span>
                     <Switch
                       checked={benefit.active}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         updateBenefitMutation.mutate({ id: benefit.id, active: checked })
                       }
                     />
