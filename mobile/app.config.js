@@ -24,7 +24,11 @@ export default {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
-      package: "com.kitchofamily.mobile"
+      package: "com.kitchofamily.mobile",
+      versionCode: 1,
+      permissions: [
+        "INTERNET"
+      ]
     },
     web: {
       favicon: "./assets/images/favicon.png"
