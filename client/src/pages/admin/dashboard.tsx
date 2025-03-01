@@ -129,7 +129,12 @@ export default function AdminDashboard() {
   };
 
   const onBenefitSubmit = (data: { level: string; benefit: string }) => {
-    addBenefitMutation.mutate(data);
+    // Ensure we're using the selected level from the dropdown
+    const benefitData = {
+      ...data,
+      level: selectedLevel // Use the selected level from state
+    };
+    addBenefitMutation.mutate(benefitData);
   };
 
   return (
