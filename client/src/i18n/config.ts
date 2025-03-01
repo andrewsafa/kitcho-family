@@ -18,6 +18,7 @@ i18n
         translation: {
           // Customer section
           "welcome": "Welcome to Kitcho Family",
+          "special_announcements": "Special Announcements",
           "join_family": "Join our family and start earning rewards on every visit",
           "full_name": "Full Name",
           "mobile_number": "Mobile Number",
@@ -100,6 +101,7 @@ i18n
         translation: {
           // Customer section
           "welcome": "اهلا بيك في عائلة كيتشو",
+          "special_announcements": "عروض مخصوصة ليك",
           "join_family": "انضم إلى عائلتنا وابدأ في كسب المكافآت مع كل زيارة",
           "full_name": "الاسم الكامل",
           "mobile_number": "رقم الجوال",
