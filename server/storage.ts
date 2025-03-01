@@ -95,7 +95,8 @@ export class MemStorage implements IStorage {
 
   async getLevelBenefits(level: string): Promise<LevelBenefit[]> {
     return Array.from(this.benefits.values())
-      .filter(b => b.level === level && b.active);
+      .filter(b => b.level === level && b.active)
+      .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
   }
 
   async addLevelBenefit(benefit: InsertLevelBenefit): Promise<LevelBenefit> {
