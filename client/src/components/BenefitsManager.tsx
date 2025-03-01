@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -97,12 +96,12 @@ export function BenefitsManager() {
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Manage Benefits</h2>
-      
+
       <div className="grid gap-4">
         {benefits?.map((benefit: LevelBenefit) => (
           <div
             key={benefit.id}
-            className="flex items-center justify-between p-4 border rounded-lg"
+            className="flex items-center justify-between p-4 border rounded-lg bg-white shadow-sm"
           >
             <div>
               <p className="font-medium">{benefit.level}</p>
@@ -114,28 +113,28 @@ export function BenefitsManager() {
                 size="sm"
                 onClick={() => handleEdit(benefit)}
               >
-                Edit
+                تعديل
               </Button>
-              
+
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
-                    Delete
+                    حذف
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Benefit</AlertDialogTitle>
+                    <AlertDialogTitle>حذف المميزات</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete this benefit? This action cannot be undone.
+                      هل أنت متأكد من حذف هذه الميزة؟ لا يمكن التراجع عن هذا الإجراء.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => deleteMutation.mutate(benefit.id)}
                     >
-                      Delete
+                      حذف
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -148,13 +147,13 @@ export function BenefitsManager() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Benefit</DialogTitle>
+            <DialogTitle>تعديل المميزات</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               if (!editingBenefit) return;
-              
+
               const formData = new FormData(e.currentTarget);
               updateMutation.mutate({
                 id: editingBenefit.id,
@@ -167,7 +166,7 @@ export function BenefitsManager() {
             className="space-y-4"
           >
             <div className="space-y-2">
-              <Label htmlFor="level">Level</Label>
+              <Label htmlFor="level">المستوى</Label>
               <Input
                 id="level"
                 name="level"
@@ -176,7 +175,7 @@ export function BenefitsManager() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="benefit">Benefit Description</Label>
+              <Label htmlFor="benefit">وصف الميزة</Label>
               <Input
                 id="benefit"
                 name="benefit"
@@ -190,10 +189,10 @@ export function BenefitsManager() {
                 variant="outline"
                 onClick={() => setIsEditDialogOpen(false)}
               >
-                Cancel
+                إلغاء
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
-                Save Changes
+                حفظ التغييرات
               </Button>
             </div>
           </form>
