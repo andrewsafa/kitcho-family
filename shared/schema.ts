@@ -51,6 +51,20 @@ export const specialOffers = pgTable("special_offers", {
   active: boolean("active").notNull().default(true),
 });
 
+export const storeSubmissions = pgTable("store_submissions", {
+  id: serial("id").primaryKey(),
+  shortDescription: text("short_description").notNull(),
+  fullDescription: text("full_description").notNull(),
+  privacyPolicyUrl: text("privacy_policy_url").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone"),
+  iconPath: text("icon_path"),
+  featureGraphicPath: text("feature_graphic_path"),
+  screenshotPaths: text("screenshot_paths").array(),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertAdminSchema = createInsertSchema(admins).pick({
   username: true,
   password: true,
@@ -99,6 +113,23 @@ export const insertSpecialOfferSchema = createInsertSchema(specialOffers).pick({
   validUntil: z.string().transform(str => new Date(str)),
 });
 
+export const insertStoreSubmissionSchema = createInsertSchema(storeSubmissions).pick({
+  shortDescription: true,
+  fullDescription: true,
+  privacyPolicyUrl: true,
+  contactEmail: true,
+  contactPhone: true,
+  iconPath: true,
+  featureGraphicPath: true,
+  screenshotPaths: true,
+}).extend({
+  shortDescription: z.string().min(10, "Short description must be at least 10 characters"),
+  fullDescription: z.string().min(50, "Full description must be at least 50 characters"),
+  privacyPolicyUrl: z.string().url("Invalid privacy policy URL"),
+  contactEmail: z.string().email("Invalid contact email"),
+  contactPhone: z.string().optional(),
+});
+
 export type Admin = typeof admins.$inferSelect;
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type Customer = typeof customers.$inferSelect;
@@ -111,6 +142,8 @@ export type SpecialEvent = typeof specialEvents.$inferSelect;
 export type InsertSpecialEvent = z.infer<typeof insertSpecialEventSchema>;
 export type SpecialOffer = typeof specialOffers.$inferSelect;
 export type InsertSpecialOffer = z.infer<typeof insertSpecialOfferSchema>;
+export type StoreSubmission = typeof storeSubmissions.$inferSelect;
+export type InsertStoreSubmission = z.infer<typeof insertStoreSubmissionSchema>;
 
 export const LOYALTY_LEVELS = {
   Bronze: { min: 0, max: 100000 },
