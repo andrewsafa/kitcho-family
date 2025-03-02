@@ -20,41 +20,389 @@ import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialO
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
-
-// ... [keep all the existing interface definitions and other imports]
-
 export default function AdminDashboard() {
-  // ... [keep all the existing state and hooks]
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
+  // State
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
   const [eventLevel, setEventLevel] = useState("Bronze");
   const [offerLevel, setOfferLevel] = useState("Bronze");
+  const [showBackupSettings, setShowBackupSettings] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState("Bronze");
 
-  // Filter events and offers based on selected level
-  const filteredEvents = specialEvents.filter(event => event.level === eventLevel);
-  const filteredOffers = specialOffers.filter(offer => offer.level === offerLevel);
 
-  // Handle phone number search
+  // Query hooks
+  const { data: customers = [] } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
+
+  const { data: specialEvents = [] } = useQuery<SpecialEvent[]>({
+    queryKey: ["/api/events"],
+  });
+
+  const { data: specialOffers = [] } = useQuery<SpecialOffer[]>({
+    queryKey: ["/api/offers"],
+  });
+
+  const { data: benefits = [] } = useQuery<LevelBenefit[]>({
+    queryKey: ["/api/benefits"],
+  });
+
+  const { data: backupConfig } = useQuery<any>({
+    queryKey: ["/api/backup/config"],
+  });
+
+  const { data: backupHistory = [] } = useQuery<any[]>({
+    queryKey: ["/api/backup/history"],
+  });
+
+  // Form schemas
+  const formSchema = z.object({
+    mobile: z.string(),
+    points: z.coerce.number(),
+    description: z.string().min(1, "Description is required"),
+  });
+
+  // Forms
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      mobile: "",
+      points: 0,
+      description: ""
+    }
+  });
+
+  const eventForm = useForm({
+    resolver: zodResolver(insertSpecialEventSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      multiplier: 2,
+      level: eventLevel,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    }
+  });
+
+  const offerForm = useForm({
+    resolver: zodResolver(insertSpecialOfferSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      level: offerLevel,
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    }
+  });
+
+  const benefitForm = useForm({
+    resolver: zodResolver(insertLevelBenefitSchema),
+    defaultValues: {
+      level: eventLevel,
+      benefit: ""
+    }
+  });
+
+  const changePasswordForm = useForm({
+    resolver: zodResolver(
+      z.object({
+        currentPassword: z.string().min(1, "Current password is required"),
+        newPassword: z.string().min(6, "New password must be at least 6 characters"),
+        confirmPassword: z.string()
+      }).refine(data => data.newPassword === data.confirmPassword, {
+        message: "Passwords do not match",
+        path: ["confirmPassword"]
+      })
+    ),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    }
+  });
+
+  // Mutations
+  const addPointsMutation = useMutation({
+    mutationFn: async (data: InsertPointTransaction) => {
+      const res = await apiRequest("POST", "/api/points", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Points added successfully" });
+      notifyPointsAdded(data.points, data.totalPoints);
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      form.reset();
+      setSelectedCustomer(null);
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  });
+
+  const addEventMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof insertSpecialEventSchema>) => {
+      const res = await apiRequest("POST", "/api/events", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Special event created successfully" });
+      notifySpecialEvent(data.name, data.multiplier, new Date(data.endDate));
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      eventForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  });
+
+  const updateEventMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/events/${id}`, { active });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+    }
+  });
+
+  const addOfferMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof insertSpecialOfferSchema>) => {
+      const res = await apiRequest("POST", "/api/offers", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Special offer created successfully" });
+      notifySpecialOffer(data.title, new Date(data.validUntil));
+      queryClient.invalidateQueries({ queryKey: ["/api/offers"] });
+      offerForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  });
+
+  const updateOfferMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/offers/${id}`, { active });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/offers"] });
+    }
+  });
+
+  const addBenefitMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof insertLevelBenefitSchema>) => {
+      const res = await apiRequest("POST", "/api/benefits", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Benefit added successfully!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/benefits"] });
+      benefitForm.reset();
+    },
+    onError: (error) => {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    }
+  });
+
+  const updateBenefitMutation = useMutation({
+    mutationFn: async (data: Partial<LevelBenefit>) => {
+      const res = await apiRequest("PATCH", `/api/benefits/${data.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/benefits"] });
+    }
+  });
+
+  const deleteBenefitMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/benefits/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/benefits"] });
+    }
+  });
+
+  const updateBackupConfigMutation = useMutation({
+    mutationFn: async (config: any) => {
+      const res = await apiRequest("POST", "/api/backup/config", config);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backup/config"] });
+    }
+  });
+
+  const runBackupMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/backup/run");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/backup/history"] });
+    }
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/auth/change-password", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Password changed successfully!" });
+      changePasswordForm.reset();
+    },
+    onError: (error) => {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    }
+  });
+
+  const handleDeleteCustomer = async (customer: Customer) => {
+    if (window.confirm(`Are you sure you want to delete ${customer.name}?`)) {
+      try {
+        await apiRequest("DELETE", `/api/customers/${customer.id}`);
+        queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+        toast({ title: `${customer.name} deleted successfully` });
+      } catch (error) {
+        toast({ variant: "destructive", title: "Error deleting customer", description: (error as Error).message });
+      }
+    }
+  };
+
+  const handleDeletePoints = async (customer: Customer) => {
+    if(window.confirm(`Are you sure you want to deduct points from ${customer.name}?`)){
+      try {
+        await apiRequest("DELETE", `/api/customers/${customer.id}/points`);
+        queryClient.invalidateQueries({queryKey: ["/api/customers"]});
+        toast({title: `Points deducted from ${customer.name}`});
+      } catch (error) {
+        toast({ variant: "destructive", title: "Error deducting points", description: (error as Error).message });
+      }
+    }
+  };
+
+  const handleBackup = async () => {
+    try {
+      const res = await apiRequest("POST", "/api/backup/run");
+      if (res.ok) {
+        toast({ title: "Backup initiated successfully" });
+      } else {
+        toast({ variant: "destructive", title: "Error initiating backup", description: await res.text() });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error initiating backup", description: (error as Error).message });
+    }
+  };
+
+  const handleRestore = async () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const formData = new FormData();
+        formData.append('backup', file);
+        try {
+          const res = await apiRequest("POST", "/api/backup/restore", formData);
+          if (res.ok) {
+            toast({ title: "Restore initiated successfully" });
+            window.location.reload();
+          } else {
+            toast({ variant: "destructive", title: "Error restoring backup", description: await res.text() });
+          }
+        } catch (error) {
+          toast({ variant: "destructive", title: "Error restoring backup", description: (error as Error).message });
+        }
+      }
+    };
+    fileInput.click();
+  };
+
+  const onBenefitSubmit = (data: z.infer<typeof insertLevelBenefitSchema>) => {
+    addBenefitMutation.mutate({...data, level: selectedLevel});
+  };
+
+
+  const onChangePasswordSubmit = (data: any) => {
+    changePasswordMutation.mutate(data);
+  };
+
+  // Event handlers
   const handleSearch = async (mobile: string) => {
     if (!mobile) {
       setSearchResults([]);
       return;
     }
-    const results = customers.filter(c => 
+    const results = customers.filter(c =>
       c.mobile.toLowerCase().includes(mobile.toLowerCase()) ||
       c.name.toLowerCase().includes(mobile.toLowerCase())
     );
     setSearchResults(results);
   };
 
-  // Filter customers for the Members tab
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    if (!selectedCustomer) return;
+
+    const transactionData: InsertPointTransaction = {
+      customerId: selectedCustomer.id,
+      points: data.points,
+      description: data.description
+    };
+
+    addPointsMutation.mutate(transactionData);
+  };
+
+  const onEventSubmit = (data: z.infer<typeof insertSpecialEventSchema>) => {
+    const eventData = {
+      ...data,
+      level: eventLevel
+    };
+    addEventMutation.mutate(eventData);
+  };
+
+  const onOfferSubmit = (data: z.infer<typeof insertSpecialOfferSchema>) => {
+    const offerData = {
+      ...data,
+      level: offerLevel
+    };
+    addOfferMutation.mutate(offerData);
+  };
+
+  // Filter data
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
     customer.mobile.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
     customer.level.toLowerCase().includes(memberSearchTerm.toLowerCase())
   );
 
+  const filteredEvents = specialEvents.filter(event => event.level === eventLevel);
+  const filteredOffers = specialOffers.filter(offer => offer.level === offerLevel);
+
+  // Effects
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
+  // Keep the rest of the component (JSX) unchanged
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -111,8 +459,8 @@ export default function AdminDashboard() {
               <CardContent>
                 <div className="space-y-6">
                   <div className="flex gap-4">
-                    <Input 
-                      placeholder="Search by phone number or name" 
+                    <Input
+                      placeholder="Search by phone number or name"
                       onChange={(e) => handleSearch(e.target.value)}
                     />
                   </div>
