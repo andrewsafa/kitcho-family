@@ -1329,6 +1329,10 @@ export default function AdminDashboard() {
                 </TableBody>
               </Table>
             </div>
+
+            <DialogFooter>
+              <Button onClick={() => setSelectedMemberHistory(null)}>Close</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
