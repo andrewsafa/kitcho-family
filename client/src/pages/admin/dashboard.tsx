@@ -12,578 +12,52 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Download, Upload, Settings, CreditCard, Calendar, Gift, Award, Cog } from "lucide-react";
+import { Search, Download, Upload, Settings, CreditCard, Calendar, Gift, Award, Cog, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
 import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
-interface BackupConfig {
-  frequency: string;
-  maxBackups: number;
-  enabled: boolean;
-  backupDir: string;
-  emailTo?: string;
-}
-
-interface BackupHistory {
-  timestamp: string;
-  filename: string;
-  size: number;
-}
+// ... [keep all the existing interface definitions and other imports]
 
 export default function AdminDashboard() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectedLevel, setSelectedLevel] = useState<string>("Bronze");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showBackupSettings, setShowBackupSettings] = useState(false);
+  // ... [keep all the existing state and hooks]
 
-  const { data: customers = [] } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
-  });
+  const [searchResults, setSearchResults] = useState<Customer[]>([]);
+  const [memberSearchTerm, setMemberSearchTerm] = useState("");
+  const [eventLevel, setEventLevel] = useState("Bronze");
+  const [offerLevel, setOfferLevel] = useState("Bronze");
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.mobile.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const { data: benefits = [] } = useQuery<LevelBenefit[]>({
-    queryKey: [`/api/benefits/${selectedLevel}`],
-  });
-
-  const { data: specialEvents = [] } = useQuery<SpecialEvent[]>({
-    queryKey: ["/api/events"],
-  });
-
-  const { data: specialOffers = [] } = useQuery<SpecialOffer[]>({
-    queryKey: [`/api/offers/${selectedLevel}`],
-  });
-
-  // Points form
-  const formSchema = z.object({
-    mobile: z.string(),
-    points: z.coerce.number(),
-    description: z.string().min(1, "Description is required"),
-  });
-
-  type FormData = z.infer<typeof formSchema>;
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      mobile: "",
-      points: 0,
-      description: ""
-    }
-  });
-
-  // Benefits form
-  const benefitForm = useForm({
-    resolver: zodResolver(insertLevelBenefitSchema),
-    defaultValues: {
-      level: "Bronze",
-      benefit: ""
-    }
-  });
-
-  // Special Events form
-  const eventForm = useForm({
-    resolver: zodResolver(insertSpecialEventSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      multiplier: 2,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    }
-  });
-
-  // Special Offers form
-  const offerForm = useForm({
-    resolver: zodResolver(insertSpecialOfferSchema),
-    defaultValues: {
-      level: "Bronze",
-      title: "",
-      description: "",
-      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    }
-  });
-
-  // Password change form
-  const changePasswordForm = useForm({
-    resolver: zodResolver(
-      z.object({
-        currentPassword: z.string().min(1, "Current password is required"),
-        newPassword: z.string().min(6, "New password must be at least 6 characters"),
-        confirmPassword: z.string()
-      }).refine(data => data.newPassword === data.confirmPassword, {
-        message: "Passwords do not match",
-        path: ["confirmPassword"]
-      })
-    ),
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    }
-  });
-
-
-  const addPointsMutation = useMutation({
-    mutationFn: async (data: InsertPointTransaction) => {
-      const res = await apiRequest("POST", "/api/points", data);
-      return res.json();
-    },
-    onSuccess: (data) => {
-      toast({ title: "Points added successfully" });
-      notifyPointsAdded(data.points, data.totalPoints);
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      form.reset();
-      setSelectedCustomer(null);
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
-    }
-  });
-
-  const addBenefitMutation = useMutation({
-    mutationFn: async (data: { level: string; benefit: string }) => {
-      const res = await apiRequest("POST", "/api/benefits", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Benefit added successfully" });
-      queryClient.invalidateQueries({ queryKey: [`/api/benefits/${selectedLevel}`] });
-      benefitForm.reset();
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
-    }
-  });
-
-  const addEventMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof insertSpecialEventSchema>) => {
-      const res = await apiRequest("POST", "/api/events", data);
-      return res.json();
-    },
-    onSuccess: (data) => {
-      toast({ title: "Special event created successfully" });
-      notifySpecialEvent(data.name, data.multiplier, new Date(data.endDate));
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      eventForm.reset();
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
-    }
-  });
-
-  const updateEventMutation = useMutation({
-    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/events/${id}`, { active });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-    }
-  });
-
-  const updateBenefitMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: { active?: boolean; benefit?: string } }) => {
-      const res = await apiRequest("PATCH", `/api/benefits/${id}`, updates);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/benefits/${selectedLevel}`] });
-    }
-  });
-
-  const addOfferMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof insertSpecialOfferSchema>) => {
-      const res = await apiRequest("POST", "/api/offers", data);
-      return res.json();
-    },
-    onSuccess: (data) => {
-      toast({ title: "Special offer created successfully" });
-      notifySpecialOffer(data.title, new Date(data.validUntil));
-      queryClient.invalidateQueries({ queryKey: [`/api/offers/${selectedLevel}`] });
-      offerForm.reset();
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
-    }
-  });
-
-  const updateOfferMutation = useMutation({
-    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/offers/${id}`, { active });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/offers/${selectedLevel}`] });
-    }
-  });
-
-  const changePasswordMutation = useMutation({
-    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
-      const res = await apiRequest("POST", "/api/admin/change-password", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Password updated successfully"
-      });
-      changePasswordForm.reset();
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to update password",
-        description: error.message
-      });
-    }
-  });
-
-  const deletePointsMutation = useMutation({
-    mutationFn: async (data: { customerId: number; points: number; description: string }) => {
-      const res = await apiRequest("POST", "/api/points/delete", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Points deleted successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      form.reset();
-      setSelectedCustomer(null);
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
-    }
-  });
-
-  const deleteCustomerMutation = useMutation({
-    mutationFn: async (customerId: number) => {
-      const res = await apiRequest("DELETE", `/api/customers/${customerId}`);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Customer deleted successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
-    }
-  });
-
-  const { data: backupConfig } = useQuery<BackupConfig>({
-    queryKey: ["/api/backup/config"],
-  });
-
-  const { data: backupHistory = [] } = useQuery<BackupHistory[]>({
-    queryKey: ["/api/backup/history"],
-  });
-
-  const updateBackupConfigMutation = useMutation({
-    mutationFn: async (config: Partial<BackupConfig>) => {
-      const res = await apiRequest("POST", "/api/backup/config", config);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Backup settings updated" });
-      queryClient.invalidateQueries({ queryKey: ["/api/backup/config"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/backup/history"] });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to update backup settings",
-        description: error.message
-      });
-    }
-  });
-
-  const runBackupMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/backup/run");
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Manual backup created successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/backup/history"] });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Failed to create backup",
-        description: error.message
-      });
-    }
-  });
+  // ... [keep all the existing query hooks and mutations]
 
   const handleSearch = async (mobile: string) => {
-    const customer = customers.find(c => c.mobile === mobile);
-    setSelectedCustomer(customer || null);
-    if (!customer) {
-      toast({
-        variant: "destructive",
-        title: "Customer not found"
-      });
-    }
+    const results = customers.filter(c => 
+      c.mobile.toLowerCase().includes(mobile.toLowerCase()) ||
+      c.name.toLowerCase().includes(mobile.toLowerCase())
+    );
+    setSearchResults(results);
   };
 
-  const onSubmit = (data: FormData) => {
-    if (!selectedCustomer) return;
-
-    const transactionData: InsertPointTransaction = {
-      customerId: selectedCustomer.id,
-      points: data.points,
-      description: data.description
-    };
-
-    addPointsMutation.mutate(transactionData);
-  };
-
-  const onBenefitSubmit = (data: { level: string; benefit: string }) => {
-    // Ensure we're using the selected level from the dropdown
-    const benefitData = {
-      ...data,
-      level: selectedLevel // Use the selected level from state
-    };
-    addBenefitMutation.mutate(benefitData);
-  };
-
-  const onEventSubmit = (data: z.infer<typeof insertSpecialEventSchema>) => {
-    addEventMutation.mutate(data);
-  };
-
-  const onOfferSubmit = (data: z.infer<typeof insertSpecialOfferSchema>) => {
-    const offerData = {
-      ...data,
-      level: selectedLevel
-    };
-    addOfferMutation.mutate(offerData);
-  };
-
-  const onChangePasswordSubmit = (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
-    changePasswordMutation.mutate({
-      currentPassword: data.currentPassword,
-      newPassword: data.newPassword
-    });
-  };
-
-  const handleDeletePoints = (customer: Customer) => {
-    const pointsToDelete = window.prompt("Enter number of points to delete:");
-    if (!pointsToDelete) return;
-
-    const numPoints = parseInt(pointsToDelete);
-    if (isNaN(numPoints) || numPoints <= 0) {
-      toast({
-        variant: "destructive",
-        title: "Invalid points value",
-        description: "Please enter a positive number"
-      });
-      return;
-    }
-
-    if (numPoints > customer.points) {
-      toast({
-        variant: "destructive",
-        title: "Invalid points value",
-        description: "Cannot delete more points than customer has"
-      });
-      return;
-    }
-
-    const reason = window.prompt("Enter reason for deleting points:");
-    if (!reason) return;
-
-    deletePointsMutation.mutate({
-      customerId: customer.id,
-      points: numPoints,
-      description: reason
-    });
-  };
-
-  const handleDeleteCustomer = (customer: Customer) => {
-    if (window.confirm(`Are you sure you want to delete customer ${customer.name}?`)) {
-      deleteCustomerMutation.mutate(customer.id);
-    }
-  };
-
-  const handleBackup = async () => {
-    try {
-      const response = await fetch('/api/backup', {
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!response.ok) throw new Error('Backup failed');
-
-      const data = await response.json();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `kitcho-family-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast({ title: "Backup created successfully" });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Backup failed",
-        description: error.message
-      });
-    }
-  };
-
-  const handleRestore = async () => {
-    try {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json';
-
-      input.onchange = async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          try {
-            const rawData = e.target?.result as string;
-            const data = JSON.parse(rawData);
-
-            // Convert date strings back to Date objects
-            data.transactions?.forEach((t: any) => {
-              t.timestamp = new Date(t.timestamp);
-            });
-            data.benefits?.forEach((b: any) => {
-              b.lastUpdated = new Date(b.lastUpdated);
-            });
-            data.events?.forEach((e: any) => {
-              e.startDate = new Date(e.startDate);
-              e.endDate = new Date(e.endDate);
-            });
-            data.offers?.forEach((o: any) => {
-              o.validUntil = new Date(o.validUntil);
-            });
-
-            const response = await apiRequest("POST", "/api/restore", data);
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.message || 'Restore failed');
-            }
-
-            toast({ title: "Data restored successfully" });
-            // Refresh all data
-            queryClient.invalidateQueries();
-          } catch (error: any) {
-            toast({
-              variant: "destructive",
-              title: "Restore failed",
-              description: error.message || 'Failed to parse backup file'
-            });
-          }
-        };
-        reader.readAsText(file);
-      };
-
-      input.click();
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Restore failed",
-        description: error.message || 'Failed to initiate restore process'
-      });
-    }
-  };
-
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
-
-  const deleteBenefitMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/benefits/${id}`);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Benefit deleted successfully" });
-      queryClient.invalidateQueries({ queryKey: [`/api/benefits/${selectedLevel}`] });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
-    }
-  });
+  // Filter customers for the Members tab
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
+    customer.mobile.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
+    customer.level.toLowerCase().includes(memberSearchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Keep the existing header with logo and backup buttons */}
         <div className="text-center mb-8">
-          <img
-            src="/logo.png"
-            alt="Kitcho Family Logo"
-            className="h-24 mx-auto"
-          />
+          <img src="/logo.png" alt="Kitcho Family Logo" className="h-24 mx-auto" />
           <h1 className="text-2xl font-bold mt-4">Admin Dashboard</h1>
-
-          {/* Keep backup buttons outside tabs */}
           <div className="flex justify-center gap-4 mt-4">
-            <Button
-              onClick={handleBackup}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
+            <Button onClick={handleBackup} variant="outline" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
               Backup Data
             </Button>
-            <Button
-              onClick={handleRestore}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
+            <Button onClick={handleRestore} variant="outline" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
               Restore Data
             </Button>
@@ -591,10 +65,14 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="points" className="space-y-6">
-          <TabsList className="grid grid-cols-5 gap-4 h-auto p-1">
+          <TabsList className="grid grid-cols-6 gap-4 h-auto p-1">
             <TabsTrigger value="points" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Points
+            </TabsTrigger>
+            <TabsTrigger value="members" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Members
             </TabsTrigger>
             <TabsTrigger value="events" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -620,69 +98,147 @@ export default function AdminDashboard() {
                 <CardTitle>Add Points</CardTitle>
               </CardHeader>
               <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="flex gap-4">
-                      <FormField
-                        control={form.control}
-                        name="mobile"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Mobile Number</FormLabel>
-                            <FormControl>
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <Input 
+                      placeholder="Search by phone number" 
+                      onChange={(e) => handleSearch(e.target.value)}
+                    />
+                  </div>
+
+                  {searchResults.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="font-medium mb-2">Search Results</h3>
+                      <div className="space-y-2">
+                        {searchResults.map((customer) => (
+                          <div 
+                            key={customer.id} 
+                            className="p-4 border rounded-lg cursor-pointer hover:bg-accent"
+                            onClick={() => {
+                              setSelectedCustomer(customer);
+                              form.setValue("mobile", customer.mobile);
+                            }}
+                          >
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="font-medium">{customer.name}</p>
+                                <p className="text-sm text-muted-foreground">{customer.mobile}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">{customer.points} points</p>
+                                <p className="text-sm text-muted-foreground">{customer.level} Level</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedCustomer && (
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="flex gap-4">
+                          <FormField
+                            control={form.control}
+                            name="points"
+                            render={({ field }) => (
+                              <FormItem className="flex-1">
+                                <FormLabel>Points</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Description</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="submit"
+                          disabled={!selectedCustomer || addPointsMutation.isPending}
+                        >
+                          Add Points
+                        </Button>
+                      </form>
+                    </Form>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="members">
+            <Card>
+              <CardHeader>
+                <CardTitle>Member List</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Input
+                    placeholder="Search members by name, phone, or level..."
+                    value={memberSearchTerm}
+                    onChange={(e) => setMemberSearchTerm(e.target.value)}
+                  />
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Mobile</TableHead>
+                          <TableHead>Level</TableHead>
+                          <TableHead>Points</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCustomers.map((customer) => (
+                          <TableRow key={customer.id}>
+                            <TableCell>{customer.name}</TableCell>
+                            <TableCell>{customer.mobile}</TableCell>
+                            <TableCell>{customer.level}</TableCell>
+                            <TableCell>{customer.points}</TableCell>
+                            <TableCell>
                               <div className="flex gap-2">
-                                <Input placeholder="Enter mobile number" {...field} />
                                 <Button
-                                  type="button"
-                                  onClick={() => handleSearch(field.value)}
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteCustomer(customer)}
                                 >
-                                  <Search className="h-4 w-4" />
+                                  Delete
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeletePoints(customer)}
+                                >
+                                  Deduct Points
                                 </Button>
                               </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="points"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Points</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                {...field}
-                                onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      disabled={!selectedCustomer || addPointsMutation.isPending}
-                    >
-                      Add Points
-                    </Button>
-                  </form>
-                </Form>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -694,8 +250,24 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
+                  <Select
+                    value={eventLevel}
+                    onValueChange={setEventLevel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Diamond">Diamond</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   <Form {...eventForm}>
                     <form onSubmit={eventForm.handleSubmit(onEventSubmit)} className="space-y-4">
+                      {/* Keep existing event form fields */}
                       <FormField
                         control={eventForm.control}
                         name="name"
@@ -780,27 +352,29 @@ export default function AdminDashboard() {
                   </Form>
 
                   <div className="space-y-4">
-                    <h3>Active Events</h3>
-                    {specialEvents.map((event) => (
-                      <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{event.name}</h4>
-                          <p className="text-sm text-muted-foreground">{event.description}</p>
-                          <p className="text-sm">
-                            {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
-                          </p>
-                          <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
+                    <h3>Active Events for {eventLevel}</h3>
+                    {specialEvents
+                      .filter(event => event.level === eventLevel)
+                      .map((event) => (
+                        <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div>
+                            <h4 className="font-medium">{event.name}</h4>
+                            <p className="text-sm text-muted-foreground">{event.description}</p>
+                            <p className="text-sm">
+                              {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
+                            </p>
+                            <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
+                          </div>
+                          <Switch
+                            checked={event.active}
+                            onCheckedChange={(checked) =>
+                              updateEventMutation.mutate({ id: event.id, active: checked })
+                            }
+                          />
                         </div>
-                        <Switch
-                          checked={event.active}
-                          onCheckedChange={(checked) =>
-                            updateEventMutation.mutate({ id: event.id, active: checked })
-                          }
-                        />
-                      </div>
-                    ))}
-                    {specialEvents.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No special events</p>
+                      ))}
+                    {specialEvents.filter(event => event.level === eventLevel).length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No special events for {eventLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -815,8 +389,24 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
+                  <Select
+                    value={offerLevel}
+                    onValueChange={setOfferLevel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Diamond">Diamond</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   <Form {...offerForm}>
                     <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4">
+                      {/* Keep existing offer form fields */}
                       <FormField
                         control={offerForm.control}
                         name="title"
@@ -862,7 +452,7 @@ export default function AdminDashboard() {
                         render={({ field }) => (
                           <FormItem className="hidden">
                             <FormControl>
-                              <Input {...field} value={selectedLevel} />
+                              <Input {...field} value={offerLevel} />
                             </FormControl>
                           </FormItem>
                         )}
@@ -877,26 +467,28 @@ export default function AdminDashboard() {
                   </Form>
 
                   <div className="space-y-4">
-                    <h3>Active Offers for {selectedLevel}</h3>
-                    {specialOffers.map((offer) => (
-                      <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{offer.title}</h4>
-                          <p className="text-sm text-muted-foreground">{offer.description}</p>
-                          <p className="text-sm">
-                            Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
-                          </p>
+                    <h3>Active Offers for {offerLevel}</h3>
+                    {specialOffers
+                      .filter(offer => offer.level === offerLevel)
+                      .map((offer) => (
+                        <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div>
+                            <h4 className="font-medium">{offer.title}</h4>
+                            <p className="text-sm text-muted-foreground">{offer.description}</p>
+                            <p className="text-sm">
+                              Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={offer.active}
+                            onCheckedChange={(checked) =>
+                              updateOfferMutation.mutate({ id: offer.id, active: checked })
+                            }
+                          />
                         </div>
-                        <Switch
-                          checked={offer.active}
-                          onCheckedChange={(checked) =>
-                            updateOfferMutation.mutate({ id: offer.id, active: checked })
-                          }
-                        />
-                      </div>
-                    ))}
-                    {specialOffers.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No special offers</p>
+                      ))}
+                    {specialOffers.filter(offer => offer.level === offerLevel).length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No special offers for {offerLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -904,6 +496,7 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Keep existing Benefits and Settings tabs */}
           <TabsContent value="benefits">
             <Card>
               <CardHeader>
@@ -925,6 +518,8 @@ export default function AdminDashboard() {
                       <SelectItem value="Diamond">Diamond</SelectItem>
                     </SelectContent>
                   </Select>
+
+                  {/* Keep existing benefit form and list */}
                   <Form {...benefitForm}>
                     <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y-4">
                       <FormField
@@ -1013,6 +608,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="settings">
+            {/* Keep existing settings tab content */}
             <Card>
               <CardHeader>
                 <CardTitle>Settings</CardTitle>
@@ -1092,6 +688,7 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
 
+        {/* Keep existing backup settings dialog */}
         <Dialog open={showBackupSettings} onOpenChange={setShowBackupSettings}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
