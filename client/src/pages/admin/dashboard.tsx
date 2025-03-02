@@ -291,10 +291,15 @@ export default function AdminDashboard() {
       toast({ variant: "destructive", title: "Error", description: error.message });
     }
   });
-  // Add deduct points mutation
+  // Update the deductPointsMutation to use the correct endpoint and method
   const deductPointsMutation = useMutation({
     mutationFn: async (data: { customerId: number; points: number; reason: string }) => {
-      return await apiRequest("POST", `/api/customers/${data.customerId}/deduct-points`, data);
+      const res = await apiRequest("POST", `/api/points/deduct`, {
+        customerId: data.customerId,
+        points: data.points,
+        description: data.reason
+      });
+      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Points deducted successfully" });
