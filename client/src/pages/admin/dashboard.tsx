@@ -63,8 +63,13 @@ export default function AdminDashboard() {
     queryKey: ["/api/backup/history"],
   });
   const { data: memberHistory = [] } = useQuery<PointTransaction[]>({
-    queryKey: [`/api/points/${selectedMemberHistory?.id}`],
-    enabled: !!selectedMemberHistory,
+    queryKey: ["/api/transactions", selectedMemberHistory?.id],
+    queryFn: async () => {
+      if (!selectedMemberHistory) return [];
+      const res = await apiRequest("GET", `/api/transactions/${selectedMemberHistory.id}`);
+      return res.json();
+    },
+    enabled: !!selectedMemberHistory
   });
 
   // Form schemas
@@ -961,7 +966,7 @@ export default function AdminDashboard() {
                       />
                       <FormField
                         control={benefitForm.control}
-                        name="level"
+                                                name="level"
                         render={({ field }) => (
                           <FormItem className="hidden">
                             <FormControl>
