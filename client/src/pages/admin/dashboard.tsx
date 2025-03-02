@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialEvent, type SpecialOffer, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema } from "@shared/schema";
+import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialEvent, type SpecialOffer, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema, type PointTransaction } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ export default function AdminDashboard() {
   // Add state for deduct points dialog
   const [showDeductPoints, setShowDeductPoints] = useState(false);
   const [customerToDeduct, setCustomerToDeduct] = useState<Customer | null>(null);
+  const [selectedMemberHistory, setSelectedMemberHistory] = useState<Customer | null>(null);
 
 
   // Query hooks
@@ -60,6 +61,10 @@ export default function AdminDashboard() {
 
   const { data: backupHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/backup/history"],
+  });
+  const { data: memberHistory = [] } = useQuery<PointTransaction[]>({
+    queryKey: [`/api/points/${selectedMemberHistory?.id}`],
+    enabled: !!selectedMemberHistory,
   });
 
   // Form schemas
@@ -623,6 +628,13 @@ export default function AdminDashboard() {
                             <TableCell>{customer.points}</TableCell>
                             <TableCell>
                               <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedMemberHistory(customer)}
+                                >
+                                  View History
+                                </Button>
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -1267,6 +1279,49 @@ export default function AdminDashboard() {
                 </DialogFooter>
               </form>
             </Form>
+          </DialogContent>
+        </Dialog>
+        {/* Add Member History Dialog after other dialogs */}
+        <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Points History - {selectedMemberHistory?.name}</DialogTitle>
+              <DialogDescription>
+                Current Points: {selectedMemberHistory?.points} | Level: {selectedMemberHistory?.level}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Points Change</TableHead>
+                    <TableHead>Description</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {memberHistory.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>
+                        {format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}
+                      </TableCell>
+                      <TableCell className={transaction.points > 0 ? "text-green-600" : "text-red-600"}>
+                        {transaction.points > 0 ? "+" : ""}{transaction.points}
+                      </TableCell>
+                      <TableCell>{transaction.description}</TableCell>
+                    </TableRow>
+                  ))}
+                  {memberHistory.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                        No transaction history found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
