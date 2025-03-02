@@ -64,14 +64,15 @@ export default function AdminDashboard() {
     queryKey: ["/api/backup/history"],
   });
   const { data: memberHistory = [], isLoading: isLoadingHistory } = useQuery<PointTransaction[]>({
-    queryKey: ["/api/transactions", selectedMemberHistory?.id],
+    queryKey: ["/api/points", selectedMemberHistory?.id],
     queryFn: async () => {
       if (!selectedMemberHistory) return [];
       const res = await apiRequest("GET", `/api/points/${selectedMemberHistory.id}`);
       if (!res.ok) {
         throw new Error('Failed to fetch transaction history');
       }
-      return res.json();
+      const data = await res.json();
+      return data;
     },
     enabled: !!selectedMemberHistory
   });
@@ -159,13 +160,15 @@ export default function AdminDashboard() {
   const addPointsMutation = useMutation({
     mutationFn: async (data: InsertPointTransaction) => {
       const res = await apiRequest("POST", "/api/points", data);
+      if (!res.ok) {
+        throw new Error("Failed to add points");
+      }
       return res.json();
     },
     onSuccess: (data) => {
       toast({ title: "Points added successfully" });
-      notifyPointsAdded(data.points, data.totalPoints);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/points"] });
       form.reset();
       setSelectedCustomer(null);
     },
