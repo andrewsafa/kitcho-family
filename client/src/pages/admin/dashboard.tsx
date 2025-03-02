@@ -294,9 +294,9 @@ export default function AdminDashboard() {
   // Update the deductPointsMutation to use the correct endpoint and method
   const deductPointsMutation = useMutation({
     mutationFn: async (data: { customerId: number; points: number; reason: string }) => {
-      const res = await apiRequest("POST", `/api/points/deduct`, {
+      const res = await apiRequest("POST", "/api/points", {
         customerId: data.customerId,
-        points: data.points,
+        points: -data.points, // Make points negative for deduction
         description: data.reason
       });
       return res.json();
