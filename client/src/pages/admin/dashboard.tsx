@@ -62,11 +62,14 @@ export default function AdminDashboard() {
   const { data: backupHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/backup/history"],
   });
-  const { data: memberHistory = [] } = useQuery<PointTransaction[]>({
+  const { data: memberHistory = [], isLoading: isLoadingHistory } = useQuery<PointTransaction[]>({
     queryKey: ["/api/transactions", selectedMemberHistory?.id],
     queryFn: async () => {
       if (!selectedMemberHistory) return [];
       const res = await apiRequest("GET", `/api/transactions/${selectedMemberHistory.id}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch transaction history');
+      }
       return res.json();
     },
     enabled: !!selectedMemberHistory
@@ -1299,35 +1302,41 @@ export default function AdminDashboard() {
             </DialogHeader>
 
             <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Points Change</TableHead>
-                    <TableHead>Description</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {memberHistory.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>
-                        {format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}
-                      </TableCell>
-                      <TableCell className={transaction.points > 0 ? "text-green-600" : "text-red-600"}>
-                        {transaction.points > 0 ? "+" : ""}{transaction.points}
-                      </TableCell>
-                      <TableCell>{transaction.description}</TableCell>
-                    </TableRow>
-                  ))}
-                  {memberHistory.length === 0 && (
+              {isLoadingHistory ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  Loading transaction history...
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                        No transaction history found
-                      </TableCell>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Points Change</TableHead>
+                      <TableHead>Description</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {memberHistory.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>
+                          {format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}
+                        </TableCell>
+                        <TableCell className={transaction.points > 0 ? "text-green-600" : "text-red-600"}>
+                          {transaction.points > 0 ? "+" : ""}{transaction.points}
+                        </TableCell>
+                        <TableCell>{transaction.description}</TableCell>
+                      </TableRow>
+                    ))}
+                    {!isLoadingHistory && memberHistory.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                          No transaction history found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </div>
 
             <DialogFooter>
