@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search } from "lucide-react";
+import { Search, Download, Upload, Settings, CreditCard, Calendar, Gift, Award, Cog } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
 import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
-import { Download, Upload, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface BackupConfig {
   frequency: string;
@@ -569,7 +569,7 @@ export default function AdminDashboard() {
           />
           <h1 className="text-2xl font-bold mt-4">Admin Dashboard</h1>
 
-          {/* Add Backup/Restore buttons */}
+          {/* Keep backup buttons outside tabs */}
           <div className="flex justify-center gap-4 mt-4">
             <Button
               onClick={handleBackup}
@@ -587,16 +587,510 @@ export default function AdminDashboard() {
               <Upload className="h-4 w-4" />
               Restore Data
             </Button>
-            <Button
-              onClick={() => setShowBackupSettings(true)}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Backup Settings
-            </Button>
           </div>
         </div>
+
+        <Tabs defaultValue="points" className="space-y-6">
+          <TabsList className="grid grid-cols-5 gap-4 h-auto p-1">
+            <TabsTrigger value="points" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Points
+            </TabsTrigger>
+            <TabsTrigger value="events" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Events
+            </TabsTrigger>
+            <TabsTrigger value="offers" className="flex items-center gap-2">
+              <Gift className="h-4 w-4" />
+              Offers
+            </TabsTrigger>
+            <TabsTrigger value="benefits" className="flex items-center gap-2">
+              <Award className="h-4 w-4" />
+              Benefits
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Cog className="h-4 w-4" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="points">
+            <Card>
+              <CardHeader>
+                <CardTitle>Add Points</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="flex gap-4">
+                      <FormField
+                        control={form.control}
+                        name="mobile"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>Mobile Number</FormLabel>
+                            <FormControl>
+                              <div className="flex gap-2">
+                                <Input placeholder="Enter mobile number" {...field} />
+                                <Button
+                                  type="button"
+                                  onClick={() => handleSearch(field.value)}
+                                >
+                                  <Search className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="points"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>Points</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="submit"
+                      disabled={!selectedCustomer || addPointsMutation.isPending}
+                    >
+                      Add Points
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="events">
+            <Card>
+              <CardHeader>
+                <CardTitle>Special Events</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <Form {...eventForm}>
+                    <form onSubmit={eventForm.handleSubmit(onEventSubmit)} className="space-y-4">
+                      <FormField
+                        control={eventForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Event Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter event name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={eventForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter event description" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex gap-4">
+                        <FormField
+                          control={eventForm.control}
+                          name="multiplier"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel>Point Multiplier</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="flex gap-4">
+                        <FormField
+                          control={eventForm.control}
+                          name="startDate"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel>Start Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={eventForm.control}
+                          name="endDate"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel>End Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={addEventMutation.isPending}
+                      >
+                        Create Event
+                      </Button>
+                    </form>
+                  </Form>
+
+                  <div className="space-y-4">
+                    <h3>Active Events</h3>
+                    {specialEvents.map((event) => (
+                      <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{event.name}</h4>
+                          <p className="text-sm text-muted-foreground">{event.description}</p>
+                          <p className="text-sm">
+                            {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
+                          </p>
+                          <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
+                        </div>
+                        <Switch
+                          checked={event.active}
+                          onCheckedChange={(checked) =>
+                            updateEventMutation.mutate({ id: event.id, active: checked })
+                          }
+                        />
+                      </div>
+                    ))}
+                    {specialEvents.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No special events</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="offers">
+            <Card>
+              <CardHeader>
+                <CardTitle>Special Offers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <Form {...offerForm}>
+                    <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4">
+                      <FormField
+                        control={offerForm.control}
+                        name="title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Offer Title</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter offer title" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={offerForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter offer description" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={offerForm.control}
+                        name="validUntil"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Valid Until</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={offerForm.control}
+                        name="level"
+                        render={({ field }) => (
+                          <FormItem className="hidden">
+                            <FormControl>
+                              <Input {...field} value={selectedLevel} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="submit"
+                        disabled={addOfferMutation.isPending}
+                      >
+                        Create Offer
+                      </Button>
+                    </form>
+                  </Form>
+
+                  <div className="space-y-4">
+                    <h3>Active Offers for {selectedLevel}</h3>
+                    {specialOffers.map((offer) => (
+                      <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{offer.title}</h4>
+                          <p className="text-sm text-muted-foreground">{offer.description}</p>
+                          <p className="text-sm">
+                            Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={offer.active}
+                          onCheckedChange={(checked) =>
+                            updateOfferMutation.mutate({ id: offer.id, active: checked })
+                          }
+                        />
+                      </div>
+                    ))}
+                    {specialOffers.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No special offers</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="benefits">
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Benefits</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <Select
+                    value={selectedLevel}
+                    onValueChange={setSelectedLevel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Diamond">Diamond</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Form {...benefitForm}>
+                    <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y-4">
+                      <FormField
+                        control={benefitForm.control}
+                        name="benefit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Benefit</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter new benefit" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={benefitForm.control}
+                        name="level"
+                        render={({ field }) => (
+                          <FormItem className="hidden">
+                            <FormControl>
+                              <Input {...field} value={selectedLevel} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="submit"
+                        disabled={addBenefitMutation.isPending}
+                      >
+                        Add Benefit
+                      </Button>
+                    </form>
+                  </Form>
+
+                  <div className="space-y-4">
+                    <h3>Active Benefits for {selectedLevel}</h3>
+                    {benefits.map((benefit) => (
+                      <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{benefit.benefit}</h4>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const newBenefit = window.prompt("Enter new benefit description:", benefit.benefit);
+                              if (newBenefit) {
+                                updateBenefitMutation.mutate({
+                                  id: benefit.id,
+                                  updates: { benefit: newBenefit }
+                                });
+                              }
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (window.confirm("Are you sure you want to delete this benefit?")) {
+                                deleteBenefitMutation.mutate(benefit.id);
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                          <Switch
+                            checked={benefit.active}
+                            onCheckedChange={(checked) =>
+                              updateBenefitMutation.mutate({ id: benefit.id, updates: { active: checked } })
+                            }
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {benefits.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No benefits for this level</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Backup Configuration</h3>
+                    <Button
+                      onClick={() => setShowBackupSettings(true)}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Configure Backup Settings
+                    </Button>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Change Password</h3>
+                    <Form {...changePasswordForm}>
+                      <form
+                        onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)}
+                        className="space-y-4"
+                      >
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="currentPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Current Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="newPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirm New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="submit"
+                          disabled={changePasswordMutation.isPending}
+                        >
+                          Change Password
+                        </Button>
+                      </form>
+                    </Form>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         <Dialog open={showBackupSettings} onOpenChange={setShowBackupSettings}>
           <DialogContent className="sm:max-w-[425px]">
@@ -707,518 +1201,6 @@ export default function AdminDashboard() {
             </div>
           </DialogContent>
         </Dialog>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Add Points</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="flex gap-4">
-                  <FormField
-                    control={form.control}
-                    name="mobile"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>Mobile Number</FormLabel>
-                        <FormControl>
-                          <div className="flex gap-2">
-                            <Input placeholder="Enter mobile number" {...field} />
-                            <Button
-                              type="button"
-                              onClick={() => handleSearch(field.value)}
-                            >
-                              <Search className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="points"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>Points</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="submit"
-                  disabled={!selectedCustomer || addPointsMutation.isPending}
-                >
-                  Add Points
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Special Events</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <Form {...eventForm}>
-                <form onSubmit={eventForm.handleSubmit(onEventSubmit)} className="space-y-4">
-                  <FormField
-                    control={eventForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Event Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter event name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={eventForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter event description" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex gap-4">
-                    <FormField
-                      control={eventForm.control}
-                      name="multiplier"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Point Multiplier</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="1"
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <FormField
-                      control={eventForm.control}
-                      name="startDate"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Start Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={eventForm.control}
-                      name="endDate"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>End Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={addEventMutation.isPending}
-                  >
-                    Create Event
-                  </Button>
-                </form>
-              </Form>
-
-              <div className="space-y-4">
-                <h3>Active Events</h3>
-                {specialEvents.map((event) => (
-                  <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{event.name}</h4>
-                      <p className="text-sm text-muted-foreground">{event.description}</p>
-                      <p className="text-sm">
-                        {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
-                      </p>
-                      <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
-                    </div>
-                    <Switch
-                      checked={event.active}
-                      onCheckedChange={(checked) =>
-                        updateEventMutation.mutate({ id: event.id, active: checked })
-                      }
-                    />
-                  </div>
-                ))}
-                {specialEvents.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">No special events</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Special Offers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <Form {...offerForm}>
-                <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4">
-                  <FormField
-                    control={offerForm.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Offer Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter offer title" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={offerForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter offer description" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={offerForm.control}
-                    name="validUntil"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valid Until</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={offerForm.control}
-                    name="level"
-                    render={({ field }) => (
-                      <FormItem className="hidden">
-                        <FormControl>
-                          <Input {...field} value={selectedLevel} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="submit"
-                    disabled={addOfferMutation.isPending}
-                  >
-                    Create Offer
-                  </Button>
-                </form>
-              </Form>
-
-              <div className="space-y-4">
-                <h3>Active Offers for {selectedLevel}</h3>
-                {specialOffers.map((offer) => (
-                  <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{offer.title}</h4>
-                      <p className="text-sm text-muted-foreground">{offer.description}</p>
-                      <p className="text-sm">
-                        Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={offer.active}
-                      onCheckedChange={(checked) =>
-                        updateOfferMutation.mutate({ id: offer.id, active: checked })
-                      }
-                    />
-                  </div>
-                ))}
-                {specialOffers.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">No special offers</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...changePasswordForm}>
-              <form onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)} className="space-y-4">
-                <FormField
-                  control={changePasswordForm.control}
-                  name="currentPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={changePasswordForm.control}
-                  name="newPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>New Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={changePasswordForm.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="submit"
-                  disabled={changePasswordMutation.isPending}
-                >
-                  Update Password
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Manage Benefits</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <Select
-                value={selectedLevel}
-                onValueChange={setSelectedLevel}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Bronze">Bronze</SelectItem>
-                  <SelectItem value="Silver">Silver</SelectItem>
-                  <SelectItem value="Gold">Gold</SelectItem>
-                  <SelectItem value="Diamond">Diamond</SelectItem>
-                </SelectContent>
-              </Select>
-              <Form {...benefitForm}>
-                <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y-4">
-                  <FormField
-                    control={benefitForm.control}
-                    name="benefit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>New Benefit</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter new benefit" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={benefitForm.control}
-                    name="level"
-                    render={({ field }) => (
-                      <FormItem className="hidden">
-                        <FormControl>
-                          <Input {...field} value={selectedLevel} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="submit"
-                    disabled={addBenefitMutation.isPending}
-                  >
-                    Add Benefit
-                  </Button>
-                </form>
-              </Form>
-
-              <div className="space-y-4">
-                <h3>Active Benefits for {selectedLevel}</h3>
-                {benefits.map((benefit) => (
-                  <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{benefit.benefit}</h4>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const newBenefit = window.prompt("Enter new benefit description:", benefit.benefit);
-                          if (newBenefit) {
-                            updateBenefitMutation.mutate({
-                              id: benefit.id,
-                              updates: { benefit: newBenefit }
-                            });
-                          }
-                        }}
-                      >
-                        تعديل
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (window.confirm("Are you sure you want to delete this benefit?")) {
-                            deleteBenefitMutation.mutate(benefit.id);
-                          }
-                        }}
-                      >
-                        حذف
-                      </Button>
-                      <Switch
-                        checked={benefit.active}
-                        onCheckedChange={(checked) =>
-                          updateBenefitMutation.mutate({ id: benefit.id, updates: { active: checked } })
-                        }
-                      />
-                    </div>
-                  </div>
-                ))}
-                {benefits.length === 0 && (
-                  <p className="text-muted-foreground text-center py-4">No benefits for this level</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Customers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search customers"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="max-w-sm"
-                />
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Mobile</TableHead>
-                    <TableHead>Points</TableHead>
-                    <TableHead>Level</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCustomers.map((customer) => (
-                    <TableRow key={customer.id}>
-                      <TableCell>{customer.name}</TableCell>
-                      <TableCell>{customer.mobile}</TableCell>
-                      <TableCell>{customer.points}</TableCell>
-                      <TableCell>{customer.level}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeletePoints(customer)}
-                            disabled={customer.points <= 0}
-                          >
-                            Delete Points
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteCustomer(customer)}
-                          >
-                            Delete Customer
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredCustomers.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        No customers
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
