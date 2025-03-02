@@ -67,7 +67,7 @@ export default function AdminDashboard() {
     queryKey: ["/api/transactions", selectedMemberHistory?.id],
     queryFn: async () => {
       if (!selectedMemberHistory) return [];
-      const res = await apiRequest("GET", `/api/transactions/${selectedMemberHistory.id}`);
+      const res = await apiRequest("GET", `/api/points/${selectedMemberHistory.id}`);
       if (!res.ok) {
         throw new Error('Failed to fetch transaction history');
       }
@@ -1317,7 +1317,7 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {memberHistory.map((transaction) => (
+                    {memberHistory?.map((transaction) => (
                       <TableRow key={transaction.id}>
                         <TableCell>
                           {format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}
@@ -1328,7 +1328,7 @@ export default function AdminDashboard() {
                         <TableCell>{transaction.description}</TableCell>
                       </TableRow>
                     ))}
-                    {!isLoadingHistory && memberHistory.length === 0 && (
+                    {!isLoadingHistory && (!memberHistory?.length || memberHistory.length === 0) && (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
                           No transaction history found
