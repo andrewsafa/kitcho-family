@@ -17,6 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
 import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+
 
 // ... [keep all the existing interface definitions and other imports]
 
@@ -28,9 +31,16 @@ export default function AdminDashboard() {
   const [eventLevel, setEventLevel] = useState("Bronze");
   const [offerLevel, setOfferLevel] = useState("Bronze");
 
-  // ... [keep all the existing query hooks and mutations]
+  // Filter events and offers based on selected level
+  const filteredEvents = specialEvents.filter(event => event.level === eventLevel);
+  const filteredOffers = specialOffers.filter(offer => offer.level === offerLevel);
 
+  // Handle phone number search
   const handleSearch = async (mobile: string) => {
+    if (!mobile) {
+      setSearchResults([]);
+      return;
+    }
     const results = customers.filter(c => 
       c.mobile.toLowerCase().includes(mobile.toLowerCase()) ||
       c.name.toLowerCase().includes(mobile.toLowerCase())
@@ -48,7 +58,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Keep the existing header with logo and backup buttons */}
+        {/* Header with logo and backup buttons */}
         <div className="text-center mb-8">
           <img src="/logo.png" alt="Kitcho Family Logo" className="h-24 mx-auto" />
           <h1 className="text-2xl font-bold mt-4">Admin Dashboard</h1>
@@ -92,6 +102,7 @@ export default function AdminDashboard() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Points Tab */}
           <TabsContent value="points">
             <Card>
               <CardHeader>
@@ -101,37 +112,45 @@ export default function AdminDashboard() {
                 <div className="space-y-6">
                   <div className="flex gap-4">
                     <Input 
-                      placeholder="Search by phone number" 
+                      placeholder="Search by phone number or name" 
                       onChange={(e) => handleSearch(e.target.value)}
                     />
                   </div>
 
                   {searchResults.length > 0 && (
-                    <div className="mt-4">
-                      <h3 className="font-medium mb-2">Search Results</h3>
-                      <div className="space-y-2">
-                        {searchResults.map((customer) => (
-                          <div 
-                            key={customer.id} 
-                            className="p-4 border rounded-lg cursor-pointer hover:bg-accent"
-                            onClick={() => {
-                              setSelectedCustomer(customer);
-                              form.setValue("mobile", customer.mobile);
-                            }}
-                          >
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <p className="font-medium">{customer.name}</p>
-                                <p className="text-sm text-muted-foreground">{customer.mobile}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-medium">{customer.points} points</p>
-                                <p className="text-sm text-muted-foreground">{customer.level} Level</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Level</TableHead>
+                            <TableHead>Points</TableHead>
+                            <TableHead>Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {searchResults.map((customer) => (
+                            <TableRow key={customer.id}>
+                              <TableCell>{customer.name}</TableCell>
+                              <TableCell>{customer.mobile}</TableCell>
+                              <TableCell>{customer.level}</TableCell>
+                              <TableCell>{customer.points}</TableCell>
+                              <TableCell>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedCustomer(customer);
+                                    form.setValue("mobile", customer.mobile);
+                                  }}
+                                >
+                                  Select
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </div>
                   )}
 
@@ -184,6 +203,7 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Members Tab */}
           <TabsContent value="members">
             <Card>
               <CardHeader>
@@ -243,6 +263,7 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Events Tab */}
           <TabsContent value="events">
             <Card>
               <CardHeader>
@@ -267,7 +288,17 @@ export default function AdminDashboard() {
 
                   <Form {...eventForm}>
                     <form onSubmit={eventForm.handleSubmit(onEventSubmit)} className="space-y-4">
-                      {/* Keep existing event form fields */}
+                      <FormField
+                        control={eventForm.control}
+                        name="level"
+                        render={({ field }) => (
+                          <FormItem className="hidden">
+                            <FormControl>
+                              <Input {...field} value={eventLevel} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={eventForm.control}
                         name="name"
@@ -353,27 +384,25 @@ export default function AdminDashboard() {
 
                   <div className="space-y-4">
                     <h3>Active Events for {eventLevel}</h3>
-                    {specialEvents
-                      .filter(event => event.level === eventLevel)
-                      .map((event) => (
-                        <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div>
-                            <h4 className="font-medium">{event.name}</h4>
-                            <p className="text-sm text-muted-foreground">{event.description}</p>
-                            <p className="text-sm">
-                              {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
-                            </p>
-                            <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
-                          </div>
-                          <Switch
-                            checked={event.active}
-                            onCheckedChange={(checked) =>
-                              updateEventMutation.mutate({ id: event.id, active: checked })
-                            }
-                          />
+                    {filteredEvents.map((event) => (
+                      <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{event.name}</h4>
+                          <p className="text-sm text-muted-foreground">{event.description}</p>
+                          <p className="text-sm">
+                            {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
+                          </p>
+                          <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
                         </div>
-                      ))}
-                    {specialEvents.filter(event => event.level === eventLevel).length === 0 && (
+                        <Switch
+                          checked={event.active}
+                          onCheckedChange={(checked) =>
+                            updateEventMutation.mutate({ id: event.id, active: checked })
+                          }
+                        />
+                      </div>
+                    ))}
+                    {filteredEvents.length === 0 && (
                       <p className="text-muted-foreground text-center py-4">No special events for {eventLevel} level</p>
                     )}
                   </div>
@@ -382,6 +411,7 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Offers Tab */}
           <TabsContent value="offers">
             <Card>
               <CardHeader>
@@ -406,7 +436,17 @@ export default function AdminDashboard() {
 
                   <Form {...offerForm}>
                     <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4">
-                      {/* Keep existing offer form fields */}
+                      <FormField
+                        control={offerForm.control}
+                        name="level"
+                        render={({ field }) => (
+                          <FormItem className="hidden">
+                            <FormControl>
+                              <Input {...field} value={offerLevel} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={offerForm.control}
                         name="title"
@@ -446,17 +486,6 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={offerForm.control}
-                        name="level"
-                        render={({ field }) => (
-                          <FormItem className="hidden">
-                            <FormControl>
-                              <Input {...field} value={offerLevel} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
                       <Button
                         type="submit"
                         disabled={addOfferMutation.isPending}
@@ -468,26 +497,24 @@ export default function AdminDashboard() {
 
                   <div className="space-y-4">
                     <h3>Active Offers for {offerLevel}</h3>
-                    {specialOffers
-                      .filter(offer => offer.level === offerLevel)
-                      .map((offer) => (
-                        <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div>
-                            <h4 className="font-medium">{offer.title}</h4>
-                            <p className="text-sm text-muted-foreground">{offer.description}</p>
-                            <p className="text-sm">
-                              Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
-                            </p>
-                          </div>
-                          <Switch
-                            checked={offer.active}
-                            onCheckedChange={(checked) =>
-                              updateOfferMutation.mutate({ id: offer.id, active: checked })
-                            }
-                          />
+                    {filteredOffers.map((offer) => (
+                      <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{offer.title}</h4>
+                          <p className="text-sm text-muted-foreground">{offer.description}</p>
+                          <p className="text-sm">
+                            Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
+                          </p>
                         </div>
-                      ))}
-                    {specialOffers.filter(offer => offer.level === offerLevel).length === 0 && (
+                        <Switch
+                          checked={offer.active}
+                          onCheckedChange={(checked) =>
+                            updateOfferMutation.mutate({ id: offer.id, active: checked })
+                          }
+                        />
+                      </div>
+                    ))}
+                    {filteredOffers.length === 0 && (
                       <p className="text-muted-foreground text-center py-4">No special offers for {offerLevel} level</p>
                     )}
                   </div>
@@ -496,7 +523,7 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Keep existing Benefits and Settings tabs */}
+          {/* Benefits Tab */}
           <TabsContent value="benefits">
             <Card>
               <CardHeader>
@@ -519,7 +546,6 @@ export default function AdminDashboard() {
                     </SelectContent>
                   </Select>
 
-                  {/* Keep existing benefit form and list */}
                   <Form {...benefitForm}>
                     <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y-4">
                       <FormField
@@ -607,8 +633,8 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Settings Tab */}
           <TabsContent value="settings">
-            {/* Keep existing settings tab content */}
             <Card>
               <CardHeader>
                 <CardTitle>Settings</CardTitle>
@@ -733,60 +759,42 @@ export default function AdminDashboard() {
                 <label className="text-sm font-medium">Email Notifications</label>
                 <Input
                   type="email"
-                  placeholder="Enter email address for backup notifications"
-                  value={backupConfig?.emailTo || ''}
+                  placeholder="Enter email address"
+                  value={backupConfig?.emailTo || ""}
                   onChange={(e) =>
-                    updateBackupConfigMutation.mutate({
-                      emailTo: e.target.value
-                    })
+                    updateBackupConfigMutation.mutate({ emailTo: e.target.value })
                   }
                 />
-                <p className="text-sm text-muted-foreground">
-                  Backups will be automatically sent to this email address
-                </p>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Maximum Backups</label>
                 <Input
                   type="number"
-                  value={backupConfig?.maxBackups}
+                  min="1"
+                  value={backupConfig?.maxBackups || ""}
                   onChange={(e) =>
-                    updateBackupConfigMutation.mutate({
-                      maxBackups: parseInt(e.target.value)
-                    })
+                    updateBackupConfigMutation.mutate({ maxBackups: parseInt(e.target.value) })
                   }
-                  min={1}
-                  max={30}
                 />
               </div>
 
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium">Backup History</h3>
-                <div className="max-h-[200px] overflow-y-auto space-y-2">
+              <div>
+                <h4 className="font-medium mb-2">Backup History</h4>
+                <div className="space-y-2">
                   {backupHistory.map((backup) => (
-                    <div
-                      key={backup.filename}
-                      className="text-sm p-2 border rounded"
-                    >
-                      <p className="font-medium">{backup.filename}</p>
-                      <p className="text-muted-foreground">
-                        {format(new Date(backup.timestamp), "PPp")}
-                      </p>
-                      <p className="text-muted-foreground">
-                        Size: {(backup.size / 1024).toFixed(2)} KB
-                      </p>
+                    <div key={backup.timestamp} className="text-sm">
+                      <span>{new Date(backup.timestamp).toLocaleString()}</span>
+                      <span className="mx-2">-</span>
+                      <span>{(backup.size / 1024).toFixed(2)} KB</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowBackupSettings(false)}
-              >
+            <DialogFooter>
+              <Button onClick={() => setShowBackupSettings(false)}>
                 Close
               </Button>
               <Button
@@ -795,7 +803,7 @@ export default function AdminDashboard() {
               >
                 Run Backup Now
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
