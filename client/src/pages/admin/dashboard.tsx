@@ -161,6 +161,7 @@ export default function AdminDashboard() {
       toast({ title: "Points added successfully" });
       notifyPointsAdded(data.points, data.totalPoints);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       form.reset();
       setSelectedCustomer(null);
     },
@@ -314,6 +315,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       toast({ title: "Points deducted successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       setShowDeductPoints(false);
       setCustomerToDeduct(null);
       deductPointsForm.reset();
@@ -958,7 +960,7 @@ export default function AdminDashboard() {
                           <FormItem>
                             <FormLabel>New Benefit</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter new benefit" {...field} />
+                              <Input placeholder="Enter new benefit" {...field}/>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -966,7 +968,7 @@ export default function AdminDashboard() {
                       />
                       <FormField
                         control={benefitForm.control}
-                                                name="level"
+                        name="level"
                         render={({ field }) => (
                           <FormItem className="hidden">
                             <FormControl>
