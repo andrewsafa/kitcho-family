@@ -32,6 +32,9 @@ export default function AdminDashboard() {
   const [offerLevel, setOfferLevel] = useState("Bronze");
   const [showBackupSettings, setShowBackupSettings] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState("Bronze");
+  // Add state for deduct points dialog
+  const [showDeductPoints, setShowDeductPoints] = useState(false);
+  const [customerToDeduct, setCustomerToDeduct] = useState<Customer | null>(null);
 
 
   // Query hooks
@@ -121,6 +124,20 @@ export default function AdminDashboard() {
       currentPassword: "",
       newPassword: "",
       confirmPassword: ""
+    }
+  });
+  // Add form for deducting points
+  const deductPointsForm = useForm({
+    resolver: zodResolver(z.object({
+      points: z.coerce.number()
+        .min(1, "Must deduct at least 1 point")
+        .refine(val => !customerToDeduct || val <= customerToDeduct.points,
+          "Cannot deduct more points than customer has"),
+      reason: z.string().min(1, "Reason is required"),
+    })),
+    defaultValues: {
+      points: 0,
+      reason: "",
     }
   });
 
@@ -274,6 +291,27 @@ export default function AdminDashboard() {
       toast({ variant: "destructive", title: "Error", description: error.message });
     }
   });
+  // Add deduct points mutation
+  const deductPointsMutation = useMutation({
+    mutationFn: async (data: { customerId: number; points: number; reason: string }) => {
+      return await apiRequest("POST", `/api/customers/${data.customerId}/deduct-points`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Points deducted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      setShowDeductPoints(false);
+      setCustomerToDeduct(null);
+      deductPointsForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error deducting points",
+        description: error.message
+      });
+    }
+  });
+
 
   const handleDeleteCustomer = async (customer: Customer) => {
     if (window.confirm(`Are you sure you want to delete ${customer.name}?`)) {
@@ -287,16 +325,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeletePoints = async (customer: Customer) => {
-    if(window.confirm(`Are you sure you want to deduct points from ${customer.name}?`)){
-      try {
-        await apiRequest("DELETE", `/api/customers/${customer.id}/points`);
-        queryClient.invalidateQueries({queryKey: ["/api/customers"]});
-        toast({title: `Points deducted from ${customer.name}`});
-      } catch (error) {
-        toast({ variant: "destructive", title: "Error deducting points", description: (error as Error).message });
-      }
-    }
+  // Modify handleDeletePoints function
+  const handleDeletePoints = (customer: Customer) => {
+    setCustomerToDeduct(customer);
+    setShowDeductPoints(true);
+    deductPointsForm.reset();
   };
 
   const handleBackup = async () => {
@@ -402,7 +435,7 @@ export default function AdminDashboard() {
     requestNotificationPermission();
   }, []);
 
-  // Keep the rest of the component (JSX) unchanged
+  // JSX
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -945,7 +978,7 @@ export default function AdminDashboard() {
                               if (newBenefit) {
                                 updateBenefitMutation.mutate({
                                   id: benefit.id,
-                                  updates: { benefit: newBenefit }
+                                  benefit: newBenefit
                                 });
                               }
                             }}
@@ -966,7 +999,10 @@ export default function AdminDashboard() {
                           <Switch
                             checked={benefit.active}
                             onCheckedChange={(checked) =>
-                              updateBenefitMutation.mutate({ id: benefit.id, updates: { active: checked } })
+                              updateBenefitMutation.mutate({
+                                id: benefit.id,
+                                active: checked
+                              })
                             }
                           />
                         </div>
@@ -1152,6 +1188,80 @@ export default function AdminDashboard() {
                 Run Backup Now
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Add the deduct points dialog in the JSX, after the backup dialog */}
+        <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Deduct Points</DialogTitle>
+              <DialogDescription>
+                {customerToDeduct && `Deduct points from ${customerToDeduct.name}. Current points: ${customerToDeduct.points}`}
+              </DialogDescription>
+            </DialogHeader>
+
+            <Form {...deductPointsForm}>
+              <form onSubmit={deductPointsForm.handleSubmit((data) => {
+                if (!customerToDeduct) return;
+                deductPointsMutation.mutate({
+                  customerId: customerToDeduct.id,
+                  points: data.points,
+                  reason: data.reason
+                });
+              })}
+              className="space-y-4"
+              >
+                <FormField
+                  control={deductPointsForm.control}
+                  name="points"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Points to Deduct</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={customerToDeduct?.points}
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={deductPointsForm.control}
+                  name="reason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reason</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter reason for deducting points" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setShowDeductPoints(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={deductPointsMutation.isPending}
+                  >
+                    Deduct Points
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
