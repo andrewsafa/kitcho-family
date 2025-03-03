@@ -808,7 +808,10 @@ export default function AdminDashboard() {
                   <div className="space-y-4">
                     <h3>Events for {eventLevel}</h3>
                     {filteredEvents.map((event) => (
-                      <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div 
+                        key={event.id} 
+                        className={`flex items-center justify-between p-4 border rounded-lg ${event.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                      >
                         <div>
                           <h4 className="font-medium">{event.name}</h4>
                           <p className="text-sm text-muted-foreground">{event.description}</p>
@@ -818,7 +821,7 @@ export default function AdminDashboard() {
                           <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={event.active ? "text-green-500" : "text-gray-400"}>
+                          <span className={event.active ? "text-green-600 font-medium" : "text-gray-400"}>
                             {event.active ? "Active" : "Inactive"}
                           </span>
                           <Switch
@@ -926,7 +929,10 @@ export default function AdminDashboard() {
                   <div className="space-y-4">
                     <h3>Offers for {offerLevel}</h3>
                     {filteredOffers.map((offer) => (
-                      <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div 
+                        key={offer.id} 
+                        className={`flex items-center justify-between p-4 border rounded-lg ${offer.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                      >
                         <div>
                           <h4 className="font-medium">{offer.title}</h4>
                           <p className="text-sm text-muted-foreground">{offer.description}</p>
@@ -935,13 +941,12 @@ export default function AdminDashboard() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={offer.active ? "text-green-500" : "text-gray-400"}>
+                          <span className={offer.active ? "text-green-600 font-medium" : "text-gray-400"}>
                             {offer.active ? "Active" : "Inactive"}
                           </span>
                           <Switch
                             checked={offer.active}
-                            onCheckedChange={(checked) =>
-                              updateOfferMutation.mutate({ id: offer.id, active: checked })
+                            onCheckedChange={(checked) =>                              updateOfferMutation.mutate({ id: offer.id, active: checked })
                             }
                           />
                         </div>
@@ -1006,7 +1011,10 @@ export default function AdminDashboard() {
                   <div className="space-y-4">
                     <h3>Benefits for {selectedLevel}</h3>
                     {filteredBenefits.map((benefit) => (
-                      <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div 
+                        key={benefit.id} 
+                        className={`flex items-center justify-between p-4 border rounded-lg ${benefit.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                      >
                         <div>
                           <h4 className="font-medium">{benefit.benefit}</h4>
                         </div>
@@ -1038,7 +1046,7 @@ export default function AdminDashboard() {
                             Delete
                           </Button>
                           <div className="flex items-center gap-2">
-                            <span className={benefit.active ? "text-green-500" : "text-gray-400"}>
+                            <span className={benefit.active ? "text-green-600 font-medium" : "text-gray-400"}>
                               {benefit.active ? "Active" : "Inactive"}
                             </span>
                             <Switch
