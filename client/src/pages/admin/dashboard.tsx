@@ -460,7 +460,7 @@ export default function AdminDashboard() {
   const filteredOffers = allOffers.filter(offer => offer.level === offerLevel);
   const filteredBenefits = allBenefits.filter(benefit => benefit.level === selectedLevel);
 
-  //Filter by active status
+  //Filter by active status for separate views if needed
   const filteredActiveEvents = filteredEvents.filter(event => event.active === true);
   const filteredActiveOffers = filteredOffers.filter(offer => offer.active === true);
   const filteredActiveBenefits = filteredBenefits.filter(benefit => benefit.active === true);
@@ -946,7 +946,8 @@ export default function AdminDashboard() {
                           </span>
                           <Switch
                             checked={offer.active}
-                            onCheckedChange={(checked) =>                              updateOfferMutation.mutate({ id: offer.id, active: checked })
+                            onCheckedChange={(checked) =>
+                              updateOfferMutation.mutate({ id: offer.id, active: checked })
                             }
                           />
                         </div>
