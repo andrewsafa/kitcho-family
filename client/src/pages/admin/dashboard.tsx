@@ -84,6 +84,12 @@ export default function AdminDashboard() {
 
   const { data: allEvents = [] } = useQuery<SpecialEvent[]>({
     queryKey: ["/api/events"],
+    onSuccess: (data) => {
+      console.log("Events loaded:", data);
+    },
+    onError: (error) => {
+      console.error("Error loading events:", error);
+    }
   });
 
   // Member transaction history query
@@ -203,8 +209,10 @@ export default function AdminDashboard() {
     }
   });
 
+  // Create a new mutation for adding events
   const addEventMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("Sending event data:", data);
       const res = await apiRequest("POST", "/api/events", data);
       return res.json();
     },
@@ -263,6 +271,33 @@ export default function AdminDashboard() {
     }
   });
 
+  // Add delete offer mutation
+  const deleteOfferMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/offers/${id}`);
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      // Find the level of the deleted offer to know which query to invalidate
+      const offer =
+        bronzeOffers.find(o => o.id === variables) ||
+        silverOffers.find(o => o.id === variables) ||
+        goldOffers.find(o => o.id === variables) ||
+        diamondOffers.find(o => o.id === variables);
+
+      if (offer) {
+        queryClient.invalidateQueries({ queryKey: [`/api/offers/${offer.level}`] });
+        toast({ title: "Offer deleted successfully!" });
+      } else {
+        // If we can't determine the level, invalidate all offer queries
+        queryClient.invalidateQueries({ queryKey: ["/api/offers"] });
+      }
+    },
+    onError: (error) => {
+      toast({ variant: "destructive", title: "Error deleting offer", description: error.message });
+    }
+  });
+
   const addBenefitMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/benefits", data);
@@ -295,7 +330,7 @@ export default function AdminDashboard() {
     },
     onSuccess: (_, variables) => {
       // Find the level of the deleted benefit to know which query to invalidate
-      const benefit = 
+      const benefit =
         bronzeBenefits.find(b => b.id === variables) ||
         silverBenefits.find(b => b.id === variables) ||
         goldBenefits.find(b => b.id === variables) ||
@@ -424,7 +459,7 @@ export default function AdminDashboard() {
 
   const onBenefitSubmit = (data: any) => {
     console.log("Adding benefit:", { ...data, level: selectedLevel });
-    addBenefitMutation.mutate({...data, level: selectedLevel});
+    addBenefitMutation.mutate({ ...data, level: selectedLevel });
   };
 
   const onChangePasswordSubmit = (data: any) => {
@@ -502,10 +537,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Filter events by level
-  const getFilteredEvents = (level: string) => {
-    return allEvents.filter(event => event.level === level);
-  };
 
   // Effects
   useEffect(() => {
@@ -525,12 +556,6 @@ export default function AdminDashboard() {
     benefitForm.setValue("level", selectedLevel);
   }, [selectedLevel, benefitForm]);
 
-  // Debug log
-  useEffect(() => {
-    console.log("Current benefits for", selectedLevel, ":", getLevelBenefits(selectedLevel));
-    console.log("Current offers for", offerLevel, ":", getLevelOffers(offerLevel));
-    console.log("Current events for", eventLevel, ":", getFilteredEvents(eventLevel));
-  }, [selectedLevel, offerLevel, eventLevel, bronzeBenefits, silverBenefits, goldBenefits, diamondBenefits, bronzeOffers, silverOffers, goldOffers, diamondOffers, allEvents]);
 
   // JSX
   return (
@@ -859,35 +884,34 @@ export default function AdminDashboard() {
                   {/* Events Display */}
                   <div className="mt-8 bg-white p-4 rounded-lg border">
                     <h3 className="text-lg font-medium mb-4">Events for {eventLevel}</h3>
-                    <div className="debug-info text-xs text-gray-500 mb-2">
-                      {JSON.stringify(getFilteredEvents(eventLevel))}
-                    </div>
 
-                    {getFilteredEvents(eventLevel).length > 0 ? (
+                    {allEvents && allEvents.filter(event => event.level === eventLevel).length > 0 ? (
                       <div className="space-y-4">
-                        {getFilteredEvents(eventLevel).map(event => (
-                          <div key={event.id} className="border p-4 rounded-lg">
-                            <div className="flex justify-between">
-                              <div>
-                                <h4 className="font-medium">{event.name}</h4>
-                                <p className="text-gray-600">{event.description}</p>
-                                <div className="mt-2 text-sm">
-                                  <p>Period: {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}</p>
-                                  <p>Multiplier: {event.multiplier}x</p>
+                        {allEvents
+                          .filter(event => event.level === eventLevel)
+                          .map(event => (
+                            <div key={event.id} className="border p-4 rounded-lg">
+                              <div className="flex justify-between">
+                                <div>
+                                  <h4 className="font-semibold">{event.name || "Unnamed Event"}</h4>
+                                  <p className="text-gray-600">{event.description}</p>
+                                  <div className="mt-2 text-sm">
+                                    <p>Period: {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}</p>
+                                    <p>Multiplier: {event.multiplier}x</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span>{event.active ? "Active" : "Inactive"}</span>
+                                  <Switch
+                                    checked={event.active}
+                                    onCheckedChange={(checked) => {
+                                      updateEventMutation.mutate({ id: event.id, active: checked });
+                                    }}
+                                  />
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span>{event.active ? "Active" : "Inactive"}</span>
-                                <Switch
-                                  checked={event.active}
-                                  onCheckedChange={(checked) => {
-                                    updateEventMutation.mutate({ id: event.id, active: checked });
-                                  }}
-                                />
-                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                     ) : (
                       <p className="text-center p-4 border rounded-lg">No events found for {eventLevel} level</p>
@@ -937,7 +961,7 @@ export default function AdminDashboard() {
                         )}
                       />
                       <FormField
-control={offerForm.control}
+                        control={offerForm.control}
                         name="description"
                         render={({ field }) => (
                           <FormItem>
@@ -974,9 +998,6 @@ control={offerForm.control}
                   {/* Offers Display */}
                   <div className="mt-8 bg-white p-4 rounded-lg border">
                     <h3 className="text-lg font-medium mb-4">Offers for {offerLevel}</h3>
-                    <div className="debug-info text-xs text-gray-500 mb-2">
-                      {JSON.stringify(getLevelOffers(offerLevel))}
-                    </div>
 
                     {getLevelOffers(offerLevel).length > 0 ? (
                       <div className="space-y-4">
@@ -989,6 +1010,17 @@ control={offerForm.control}
                                 <p className="mt-2 text-sm">Valid until: {new Date(offer.validUntil).toLocaleDateString()}</p>
                               </div>
                               <div className="flex items-center gap-2">
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (window.confirm("Are you sure you want to delete this offer?")) {
+                                      deleteOfferMutation.mutate(offer.id);
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </Button>
                                 <span>{offer.active ? "Active" : "Inactive"}</span>
                                 <Switch
                                   checked={offer.active}
@@ -1057,9 +1089,6 @@ control={offerForm.control}
                   {/* Benefits Display */}
                   <div className="mt-8 bg-white p-4 rounded-lg border">
                     <h3 className="text-lg font-medium mb-4">Benefits for {selectedLevel}</h3>
-                    <div className="debug-info text-xs text-gray-500 mb-2">
-                      {JSON.stringify(getLevelBenefits(selectedLevel))}
-                    </div>
 
                     {getLevelBenefits(selectedLevel).length > 0 ? (
                       <div className="space-y-4">
@@ -1107,237 +1136,116 @@ control={offerForm.control}
 
           {/* Settings Tab */}
           <TabsContent value="settings">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Change Admin Password</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...changePasswordForm}>
+                  <form onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)} className="space-y-4">
+                    <FormField
+                      control={changePasswordForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" autoComplete="current-password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={changePasswordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" autoComplete="new-password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={changePasswordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" autoComplete="new-password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="submit"
+                      disabled={changePasswordMutation.isPending}
+                    >
+                      Change Password
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
-                <CardTitle>Admin Settings</CardTitle>
+                <CardTitle>Backup Settings</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Change Password</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Form {...changePasswordForm}>
-                        <form onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)} className="space-y-4">
-                          <FormField
-                            control={changePasswordForm.control}
-                            name="currentPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Current Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={changePasswordForm.control}
-                            name="newPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>New Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={changePasswordForm.control}
-                            name="confirmPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Confirm New Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button
-                            type="submit"
-                            disabled={changePasswordMutation.isPending}
-                          >
-                            Change Password
-                          </Button>
-                        </form>
-                      </Form>
-                    </CardContent>
-                  </Card>
+                  <Button onClick={() => setShowBackupSettings(true)}>
+                    Configure Automatic Backup
+                  </Button>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Backup Settings</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Button onClick={() => setShowBackupSettings(true)} variant="outline">
-                        Configure Automatic Backups
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  <h3 className="text-lg font-medium mt-6">Backup History</h3>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>File</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {backupHistory.map((backup, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{format(new Date(backup.timestamp), "MMM d, yyyy h:mm a")}</TableCell>
+                            <TableCell>{backup.success ? "Success" : "Failed"}</TableCell>
+                            <TableCell>{backup.filename || "N/A"}</TableCell>
+                          </TableRow>
+                        ))}
+                        {backupHistory.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                              No backup history available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
 
-        {/* Backup Settings Dialog */}
-        <Dialog open={showBackupSettings} onOpenChange={setShowBackupSettings}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Backup Configuration</DialogTitle>
-              <DialogDescription>
-                Configure automatic backup settings
-              </DialogDescription>
-            </DialogHeader>
-            {backupConfig && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Backup Frequency (cron)</label>
-                    <Input
-                      value={backupConfig.frequency}
-                      onChange={(e) =>
-                        updateBackupConfigMutation.mutate({
-                          ...backupConfig,
-                          frequency: e.target.value
-                        })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">e.g. "0 0 * * *" for daily at midnight</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Max Backups to Keep</label>
-                    <Input
-                      type="number"
-                      value={backupConfig.maxBackups}
-                      onChange={(e) =>
-                        updateBackupConfigMutation.mutate({
-                          ...backupConfig,
-                          maxBackups: parseInt(e.target.value)
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enabled"
-                    checked={backupConfig.enabled}
-                    onCheckedChange={(checked) =>
-                      updateBackupConfigMutation.mutate({
-                        ...backupConfig,
-                        enabled: !!checked
-                      })
-                    }
-                  />
-                  <label
-                    htmlFor="enabled"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Enable Automatic Backups
-                  </label>
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button onClick={() => setShowBackupSettings(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Deduct Points Dialog */}
-        <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Deduct Points</DialogTitle>
-              <DialogDescription>
-                Deduct points from {customerToDeduct?.name} ({customerToDeduct?.mobile})
-              </DialogDescription>
-            </DialogHeader>
-
-            <Form {...deductPointsForm}>
-              <form
-                onSubmit={deductPointsForm.handleSubmit((data) => {
-                  if (customerToDeduct) {
-                    deductPointsMutation.mutate({
-                      customerId: customerToDeduct.id, points: data.points,
-                      reason: data.reason
-                    });
-                  }
-                })}
-                className="space-y-4"
-              >
-                <FormField
-                  control={deductPointsForm.control}
-                  name="points"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Points to Deduct</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          max={customerToDeduct?.points}
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                        />
-                      </FormControl>
-                      <p className="text-xs text-muted-foreground">
-                        Current points: {customerToDeduct?.points || 0}
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={deductPointsForm.control}
-                  name="reason"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reason</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Reason for deducting points"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowDeductPoints(false)}
-                    type="button"
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={deductPointsMutation.isPending}>
-                    Deduct Points
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Member History Dialog */}
+        {/* Transaction History Dialog */}
         <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Points Transaction History</DialogTitle>
+              <DialogTitle>
+                Transaction History: {selectedMemberHistory?.name}
+              </DialogTitle>
               <DialogDescription>
-                Viewing history for {selectedMemberHistory?.name} ({selectedMemberHistory?.mobile})
+                Level: {selectedMemberHistory?.level} | Current Points: {selectedMemberHistory?.points}
               </DialogDescription>
             </DialogHeader>
 
@@ -1376,6 +1284,70 @@ control={offerForm.control}
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Deduct Points Dialog */}
+      <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deduct Points from {customerToDeduct?.name}</DialogTitle>
+            <DialogDescription>
+              Current Points: {customerToDeduct?.points}
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...deductPointsForm}>
+            <form onSubmit={deductPointsForm.handleSubmit((data) => {
+              if (!customerToDeduct) return;
+              deductPointsMutation.mutate({
+                customerId: customerToDeduct.id,
+                points: data.points,
+                reason: data.reason
+              });
+            })} className="space-y-4">
+              <FormField
+                control={deductPointsForm.control}
+                name="points"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Points to Deduct</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="1"
+                        max={customerToDeduct?.points || 0}
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={deductPointsForm.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reason</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter reason for deduction" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setShowDeductPoints(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="destructive" disabled={deductPointsMutation.isPending}>
+                  Deduct Points
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

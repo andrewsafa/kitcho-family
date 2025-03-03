@@ -53,6 +53,7 @@ export interface IStorage {
   getSpecialOffers(level: string): Promise<SpecialOffer[]>;
   createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer>;
   updateSpecialOfferStatus(id: number, active: boolean): Promise<SpecialOffer>;
+  deleteSpecialOffer(id: number): Promise<void>;
   exportData(): Promise<{
     customers: Customer[];
     transactions: PointTransaction[];
@@ -287,6 +288,10 @@ export class PostgresStorage implements IStorage {
       .where(eq(specialOffers.id, id))
       .returning();
     return result;
+  }
+
+  async deleteSpecialOffer(id: number): Promise<void> {
+    await db.delete(specialOffers).where(eq(specialOffers.id, id));
   }
 
   async exportData() {

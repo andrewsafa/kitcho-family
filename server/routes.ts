@@ -224,6 +224,17 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Add DELETE endpoint for offers
+  app.delete("/api/offers/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSpecialOffer(id);
+      res.json({ message: "Offer deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete offer" });
+    }
+  });
+
   app.post("/api/admin/change-password", requireAdmin, async (req, res) => {
     try {
       const { currentPassword, newPassword } = req.body;
