@@ -795,37 +795,47 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  <div className="border rounded-lg p-5 mt-6">
+                  {/* Events Table */}
+                  <div className="border rounded-lg mt-6 p-4">
                     <h3 className="text-lg font-medium mb-4">Events for {eventLevel}</h3>
+
                     {filteredEvents.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredEvents.map((event) => (
-                          <div 
-                            key={event.id} 
-                            className={`flex items-center justify-between p-4 border rounded-lg ${event.active ? 'bg-green-50' : 'bg-gray-50'}`}
-                          >
-                            <div>
-                              <h4 className="font-medium">{event.name}</h4>
-                              <p className="text-sm text-muted-foreground">{event.description}</p>
-                              <p className="text-sm">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Period</TableHead>
+                            <TableHead>Multiplier</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredEvents.map((event) => (
+                            <TableRow key={event.id}>
+                              <TableCell className="font-medium">{event.name}</TableCell>
+                              <TableCell>{event.description}</TableCell>
+                              <TableCell>
                                 {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
-                              </p>
-                              <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={event.active ? "text-green-600 font-medium" : "text-gray-400"}>
-                                {event.active ? "Active" : "Inactive"}
-                              </span>
-                              <Switch
-                                checked={event.active}
-                                onCheckedChange={(checked) =>
-                                  updateEventMutation.mutate({ id: event.id, active: checked })
-                                }
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                              </TableCell>
+                              <TableCell>{event.multiplier}x</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <span className={event.active ? "text-green-600 font-medium" : "text-gray-400"}>
+                                    {event.active ? "Active" : "Inactive"}
+                                  </span>
+                                  <Switch
+                                    checked={event.active}
+                                    onCheckedChange={(checked) =>
+                                      updateEventMutation.mutate({ id: event.id, active: checked })
+                                    }
+                                  />
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     ) : (
                       <p className="text-center text-muted-foreground py-4">No events found for {eventLevel} level</p>
                     )}
@@ -908,36 +918,45 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  <div className="border rounded-lg p-5 mt-6">
+                  {/* Offers Table */}
+                  <div className="border rounded-lg mt-6 p-4">
                     <h3 className="text-lg font-medium mb-4">Offers for {offerLevel}</h3>
+
                     {filteredOffers.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredOffers.map((offer) => (
-                          <div 
-                            key={offer.id} 
-                            className={`flex items-center justify-between p-4 border rounded-lg ${offer.active ? 'bg-green-50' : 'bg-gray-50'}`}
-                          >
-                            <div>
-                              <h4 className="font-medium">{offer.title}</h4>
-                              <p className="text-sm text-muted-foreground">{offer.description}</p>
-                              <p className="text-sm">
-                                Valid until: {format(new Date(offer.validUntil), "MMM d, yyyy")}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={offer.active ? "text-green-600 font-medium" : "text-gray-400"}>
-                                {offer.active ? "Active" : "Inactive"}
-                              </span>
-                              <Switch
-                                checked={offer.active}
-                                onCheckedChange={(checked) =>
-                                  updateOfferMutation.mutate({ id: offer.id, active: checked })
-                                }
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Title</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Valid Until</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredOffers.map((offer) => (
+                            <TableRow key={offer.id}>
+                              <TableCell className="font-medium">{offer.title}</TableCell>
+                              <TableCell>{offer.description}</TableCell>
+                              <TableCell>
+                                {format(new Date(offer.validUntil), "MMM d, yyyy")}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <span className={offer.active ? "text-green-600 font-medium" : "text-gray-400"}>
+                                    {offer.active ? "Active" : "Inactive"}
+                                  </span>
+                                  <Switch
+                                    checked={offer.active}
+                                    onCheckedChange={(checked) =>
+                                      updateOfferMutation.mutate({ id: offer.id, active: checked })
+                                    }
+                                  />
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     ) : (
                       <p className="text-center text-muted-foreground py-4">No offers found for {offerLevel} level</p>
                     )}
@@ -951,7 +970,7 @@ export default function AdminDashboard() {
           <TabsContent value="benefits">
             <Card>
               <CardHeader>
-<CardTitle>Level Benefits</CardTitle>
+                <CardTitle>Level Benefits</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -991,48 +1010,56 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  <div className="border rounded-lg p-5 mt-6">
+                  {/* Benefits Table */}
+                  <div className="border rounded-lg mt-6 p-4">
                     <h3 className="text-lg font-medium mb-4">Benefits for {selectedLevel}</h3>
+
                     {filteredBenefits.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredBenefits.map((benefit) => (
-                          <div 
-                            key={benefit.id} 
-                            className={`flex items-center justify-between p-4 border rounded-lg ${benefit.active ? 'bg-green-50' : 'bg-gray-50'}`}
-                          >
-                            <div>
-                              <h4 className="font-medium">{benefit.benefit}</h4>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (window.confirm("Are you sure you want to delete this benefit?")) {
-                                    deleteBenefitMutation.mutate(benefit.id);
-                                  }
-                                }}
-                              >
-                                Delete
-                              </Button>
-                              <div className="flex items-center gap-2">
-                                <span className={benefit.active ? "text-green-600 font-medium" : "text-gray-400"}>
-                                  {benefit.active ? "Active" : "Inactive"}
-                                </span>
-                                <Switch
-                                  checked={benefit.active}
-                                  onCheckedChange={(checked) =>
-                                    updateBenefitMutation.mutate({
-                                      id: benefit.id,
-                                      active: checked
-                                    })
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Benefit</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredBenefits.map((benefit) => (
+                            <TableRow key={benefit.id}>
+                              <TableCell>{benefit.benefit}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <span className={benefit.active ? "text-green-600 font-medium" : "text-gray-400"}>
+                                    {benefit.active ? "Active" : "Inactive"}
+                                  </span>
+                                  <Switch
+                                    checked={benefit.active}
+                                    onCheckedChange={(checked) =>
+                                      updateBenefitMutation.mutate({
+                                        id: benefit.id,
+                                        active: checked
+                                      })
+                                    }
+                                  />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (window.confirm("Are you sure you want to delete this benefit?")) {
+                                      deleteBenefitMutation.mutate(benefit.id);
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     ) : (
                       <p className="text-center text-muted-foreground py-4">No benefits found for {selectedLevel} level</p>
                     )}
