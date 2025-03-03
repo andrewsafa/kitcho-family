@@ -63,8 +63,8 @@ export default function AdminDashboard() {
   const { data: backupHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/backup/history"],
   });
-  const { data: memberHistory = [], isLoading: isLoadingHistory } = useQuery<PointTransaction[]>({
-    queryKey: ["/api/transactions", selectedMemberHistory?.id],
+  const { data: memberHistory = [], isLoading: isLoadingHistory, error: historyError } = useQuery<PointTransaction[]>({
+    queryKey: ["/api/points", selectedMemberHistory?.id],
     queryFn: async () => {
       if (!selectedMemberHistory) return [];
       const res = await apiRequest("GET", `/api/points/${selectedMemberHistory.id}`);
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
       toast({ title: "Points added successfully" });
       notifyPointsAdded(data.points, data.totalPoints);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/points"] });
       form.reset();
       setSelectedCustomer(null);
     },
@@ -319,7 +319,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       toast({ title: "Points deducted successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/points"] });
       setShowDeductPoints(false);
       setCustomerToDeduct(null);
       deductPointsForm.reset();
@@ -964,7 +964,7 @@ export default function AdminDashboard() {
                           <FormItem>
                             <FormLabel>New Benefit</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter new benefit" {...field}/>
+                              <Input placeholder="Enter new benefit" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1306,6 +1306,10 @@ export default function AdminDashboard() {
               {isLoadingHistory ? (
                 <div className="p-8 text-center text-muted-foreground">
                   Loading transaction history...
+                </div>
+              ) : historyError ? (
+                <div className="p-8 text-center text-red-500">
+                  Error loading transaction history. Please try again.
                 </div>
               ) : (
                 <Table>
