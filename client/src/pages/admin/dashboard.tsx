@@ -450,14 +450,19 @@ export default function AdminDashboard() {
     customer.level.toLowerCase().includes(memberSearchTerm.toLowerCase())
   );
 
-  // New filtered arrays for active items
-  const filteredEvents = specialEvents.filter(event => event.level === eventLevel);
+  // Get all events, offers, benefits regardless of status
+  const allEvents = specialEvents;
+  const allOffers = specialOffers;
+  const allBenefits = benefits;
+
+  // Filter by level
+  const filteredEvents = allEvents.filter(event => event.level === eventLevel);
+  const filteredOffers = allOffers.filter(offer => offer.level === offerLevel);
+  const filteredBenefits = allBenefits.filter(benefit => benefit.level === selectedLevel);
+
+  //Filter by active status
   const filteredActiveEvents = filteredEvents.filter(event => event.active === true);
-
-  const filteredOffers = specialOffers.filter(offer => offer.level === offerLevel);
   const filteredActiveOffers = filteredOffers.filter(offer => offer.active === true);
-
-  const filteredBenefits = benefits.filter(benefit => benefit.level === selectedLevel);
   const filteredActiveBenefits = filteredBenefits.filter(benefit => benefit.active === true);
 
   // Effects
@@ -801,8 +806,8 @@ export default function AdminDashboard() {
                   </Form>
 
                   <div className="space-y-4">
-                    <h3>Active Events for {eventLevel}</h3>
-                    {filteredActiveEvents.map((event) => (
+                    <h3>Events for {eventLevel}</h3>
+                    {filteredEvents.map((event) => (
                       <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <h4 className="font-medium">{event.name}</h4>
@@ -812,16 +817,21 @@ export default function AdminDashboard() {
                           </p>
                           <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
                         </div>
-                        <Switch
-                          checked={event.active}
-                          onCheckedChange={(checked) =>
-                            updateEventMutation.mutate({ id: event.id, active: checked })
-                          }
-                        />
+                        <div className="flex items-center gap-2">
+                          <span className={event.active ? "text-green-500" : "text-gray-400"}>
+                            {event.active ? "Active" : "Inactive"}
+                          </span>
+                          <Switch
+                            checked={event.active}
+                            onCheckedChange={(checked) =>
+                              updateEventMutation.mutate({ id: event.id, active: checked })
+                            }
+                          />
+                        </div>
                       </div>
                     ))}
-                    {filteredActiveEvents.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No active special events for {eventLevel} level</p>
+                    {filteredEvents.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No special events for {eventLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -914,8 +924,8 @@ export default function AdminDashboard() {
                   </Form>
 
                   <div className="space-y-4">
-                    <h3>Active Offers for {offerLevel}</h3>
-                    {filteredActiveOffers.map((offer) => (
+                    <h3>Offers for {offerLevel}</h3>
+                    {filteredOffers.map((offer) => (
                       <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <h4 className="font-medium">{offer.title}</h4>
@@ -924,16 +934,21 @@ export default function AdminDashboard() {
                             Valid until: {format(new Date(offer.validUntil), "MMM d, yyyy")}
                           </p>
                         </div>
-                        <Switch
-                          checked={offer.active}
-                          onCheckedChange={(checked) =>
-                            updateOfferMutation.mutate({ id: offer.id, active: checked })
-                          }
-                        />
+                        <div className="flex items-center gap-2">
+                          <span className={offer.active ? "text-green-500" : "text-gray-400"}>
+                            {offer.active ? "Active" : "Inactive"}
+                          </span>
+                          <Switch
+                            checked={offer.active}
+                            onCheckedChange={(checked) =>
+                              updateOfferMutation.mutate({ id: offer.id, active: checked })
+                            }
+                          />
+                        </div>
                       </div>
                     ))}
-                    {filteredActiveOffers.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No active special offers for {offerLevel} level</p>
+                    {filteredOffers.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No special offers for {offerLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -979,17 +994,6 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={benefitForm.control}
-                        name="level"
-                        render={({ field }) => (
-                          <FormItem className="hidden">
-                            <FormControl>
-                              <Input {...field} value={selectedLevel} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
                       <Button
                         type="submit"
                         disabled={addBenefitMutation.isPending}
@@ -1000,8 +1004,8 @@ export default function AdminDashboard() {
                   </Form>
 
                   <div className="space-y-4">
-                    <h3>Active Benefits for {selectedLevel}</h3>
-                    {filteredActiveBenefits.map((benefit) => (
+                    <h3>Benefits for {selectedLevel}</h3>
+                    {filteredBenefits.map((benefit) => (
                       <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <h4 className="font-medium">{benefit.benefit}</h4>
@@ -1033,20 +1037,25 @@ export default function AdminDashboard() {
                           >
                             Delete
                           </Button>
-                          <Switch
-                            checked={benefit.active}
-                            onCheckedChange={(checked) =>
-                              updateBenefitMutation.mutate({
-                                id: benefit.id,
-                                active: checked
-                              })
-                            }
-                          />
+                          <div className="flex items-center gap-2">
+                            <span className={benefit.active ? "text-green-500" : "text-gray-400"}>
+                              {benefit.active ? "Active" : "Inactive"}
+                            </span>
+                            <Switch
+                              checked={benefit.active}
+                              onCheckedChange={(checked) =>
+                                updateBenefitMutation.mutate({
+                                  id: benefit.id,
+                                  active: checked
+                                })
+                              }
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
-                    {filteredActiveBenefits.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No active benefits for {selectedLevel} level</p>
+                    {filteredBenefits.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No benefits for {selectedLevel} level</p>
                     )}
                   </div>
                 </div>
