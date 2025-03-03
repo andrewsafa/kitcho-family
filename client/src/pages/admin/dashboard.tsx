@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -20,7 +20,6 @@ import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialO
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
-
 export default function AdminDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -33,11 +32,9 @@ export default function AdminDashboard() {
   const [offerLevel, setOfferLevel] = useState("Bronze");
   const [showBackupSettings, setShowBackupSettings] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState("Bronze");
-  // Add state for deduct points dialog
   const [showDeductPoints, setShowDeductPoints] = useState(false);
   const [customerToDeduct, setCustomerToDeduct] = useState<Customer | null>(null);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Customer | null>(null);
-
 
   // Query hooks
   const { data: customers = [] } = useQuery<Customer[]>({
@@ -63,6 +60,7 @@ export default function AdminDashboard() {
   const { data: backupHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/backup/history"],
   });
+
   const { data: memberHistory = [], isLoading: isLoadingHistory } = useQuery<PointTransaction[]>({
     queryKey: ["/api/points", selectedMemberHistory?.id],
     queryFn: async () => {
@@ -964,7 +962,7 @@ export default function AdminDashboard() {
                         control={benefitForm.control}
                         name="benefit"
                         render={({ field }) => (
-                                                    <FormItem>
+                          <FormItem>
                             <FormLabel>New Benefit</FormLabel>
                             <FormControl>
                               <Input placeholder="Enter new benefit" {...field}/>
