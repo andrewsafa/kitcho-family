@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialEvent, type SpecialOffer, type PointTransaction, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema } from "@shared/schema";
+import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialOffer, type PointTransaction, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Download, Upload, Settings, CreditCard, Calendar, Gift, Award, Cog, Users } from "lucide-react";
+import { Search, Download, Upload, Settings, CreditCard, Gift, Award, Cog, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
-import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
+import { showNotification, notifyPointsAdded, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -28,7 +28,6 @@ export default function AdminDashboard() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
-  const [eventLevel, setEventLevel] = useState("Bronze");
   const [offerLevel, setOfferLevel] = useState("Bronze");
   const [showBackupSettings, setShowBackupSettings] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState("Bronze");
@@ -82,16 +81,6 @@ export default function AdminDashboard() {
     queryKey: ["/api/offers/Diamond"],
   });
 
-  const { data: allEvents = [] } = useQuery<SpecialEvent[]>({
-    queryKey: ["/api/events"],
-    onSuccess: (data) => {
-      console.log("Events loaded:", data);
-    },
-    onError: (error) => {
-      console.error("Error loading events:", error);
-    }
-  });
-
   // Member transaction history query
   const { data: memberHistory = [], isLoading: isLoadingHistory, error: historyError } = useQuery<PointTransaction[]>({
     queryKey: ["/api/customers", selectedMemberHistory?.id, "transactions"],
@@ -120,18 +109,6 @@ export default function AdminDashboard() {
       mobile: "",
       points: 0,
       description: ""
-    }
-  });
-
-  const eventForm = useForm({
-    resolver: zodResolver(insertSpecialEventSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      multiplier: 2,
-      level: eventLevel,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     }
   });
 
@@ -194,7 +171,7 @@ export default function AdminDashboard() {
     },
     onSuccess: (data) => {
       toast({ title: "Points added successfully" });
-      notifyPointsAdded(data.points, data.totalPoints);
+      notifyPointsAdded(data.points, data.points);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/customers", data.customerId, "transactions"] });
       form.reset();
@@ -206,38 +183,6 @@ export default function AdminDashboard() {
         title: "Error",
         description: error.message
       });
-    }
-  });
-
-  // Create a new mutation for adding events
-  const addEventMutation = useMutation({
-    mutationFn: async (data: any) => {
-      console.log("Sending event data:", data);
-      const res = await apiRequest("POST", "/api/events", data);
-      return res.json();
-    },
-    onSuccess: (data) => {
-      toast({ title: "Special event created successfully" });
-      notifySpecialEvent(data.name, data.multiplier, new Date(data.endDate));
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      eventForm.reset();
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message
-      });
-    }
-  });
-
-  const updateEventMutation = useMutation({
-    mutationFn: async ({ id, active }: { id: number; active: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/events/${id}`, { active });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
     }
   });
 
@@ -381,9 +326,9 @@ export default function AdminDashboard() {
 
   const deductPointsMutation = useMutation({
     mutationFn: async (data: { customerId: number; points: number; reason: string }) => {
-      const res = await apiRequest("POST", "/api/points", {
+      const res = await apiRequest("POST", "/api/points/delete", {
         customerId: data.customerId,
-        points: -data.points, // Make points negative for deduction
+        points: data.points,
         description: data.reason
       });
       return res.json();
@@ -491,15 +436,6 @@ export default function AdminDashboard() {
     addPointsMutation.mutate(transactionData);
   };
 
-  const onEventSubmit = (data: any) => {
-    console.log("Adding event:", { ...data, level: eventLevel });
-    const eventData = {
-      ...data,
-      level: eventLevel
-    };
-    addEventMutation.mutate(eventData);
-  };
-
   const onOfferSubmit = (data: any) => {
     console.log("Adding offer:", { ...data, level: offerLevel });
     const offerData = {
@@ -537,7 +473,6 @@ export default function AdminDashboard() {
     }
   };
 
-
   // Effects
   useEffect(() => {
     requestNotificationPermission();
@@ -545,17 +480,12 @@ export default function AdminDashboard() {
 
   // Update form default values when levels change
   useEffect(() => {
-    eventForm.setValue("level", eventLevel);
-  }, [eventLevel, eventForm]);
-
-  useEffect(() => {
     offerForm.setValue("level", offerLevel);
   }, [offerLevel, offerForm]);
 
   useEffect(() => {
     benefitForm.setValue("level", selectedLevel);
   }, [selectedLevel, benefitForm]);
-
 
   // JSX
   return (
@@ -578,7 +508,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="points" className="space-y-6">
-          <TabsList className="grid grid-cols-6 gap-4 h-auto p-1">
+          <TabsList className="grid grid-cols-5 gap-4 h-auto p-1">
             <TabsTrigger value="points" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Points
@@ -586,10 +516,6 @@ export default function AdminDashboard() {
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Members
-            </TabsTrigger>
-            <TabsTrigger value="events" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Events
             </TabsTrigger>
             <TabsTrigger value="offers" className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
@@ -773,155 +699,6 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Events Tab */}
-          <TabsContent value="events">
-            <Card>
-              <CardHeader>
-                <CardTitle>Special Events</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <Select
-                    value={eventLevel}
-                    onValueChange={setEventLevel}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Bronze">Bronze</SelectItem>
-                      <SelectItem value="Silver">Silver</SelectItem>
-                      <SelectItem value="Gold">Gold</SelectItem>
-                      <SelectItem value="Diamond">Diamond</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Form {...eventForm}>
-                    <form onSubmit={eventForm.handleSubmit(onEventSubmit)} className="space-y-4">
-                      <FormField
-                        control={eventForm.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Event Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter event name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={eventForm.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Description</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter event description" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex gap-4">
-                        <FormField
-                          control={eventForm.control}
-                          name="multiplier"
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormLabel>Point Multiplier</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  {...field}
-                                  onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="flex gap-4">
-                        <FormField
-                          control={eventForm.control}
-                          name="startDate"
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormLabel>Start Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={eventForm.control}
-                          name="endDate"
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormLabel>End Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <Button
-                        type="submit"
-                        disabled={addEventMutation.isPending}
-                      >
-                        Create Event
-                      </Button>
-                    </form>
-                  </Form>
-
-                  {/* Events Display */}
-                  <div className="mt-8 bg-white p-4 rounded-lg border">
-                    <h3 className="text-lg font-medium mb-4">Events for {eventLevel}</h3>
-
-                    {allEvents && allEvents.filter(event => event.level === eventLevel).length > 0 ? (
-                      <div className="space-y-4">
-                        {allEvents
-                          .filter(event => event.level === eventLevel)
-                          .map(event => (
-                            <div key={event.id} className="border p-4 rounded-lg">
-                              <div className="flex justify-between">
-                                <div>
-                                  <h4 className="font-semibold">{event.name || "Unnamed Event"}</h4>
-                                  <p className="text-gray-600">{event.description}</p>
-                                  <div className="mt-2 text-sm">
-                                    <p>Period: {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}</p>
-                                    <p>Multiplier: {event.multiplier}x</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span>{event.active ? "Active" : "Inactive"}</span>
-                                  <Switch
-                                    checked={event.active}
-                                    onCheckedChange={(checked) => {
-                                      updateEventMutation.mutate({ id: event.id, active: checked });
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <p className="text-center p-4 border rounded-lg">No events found for {eventLevel} level</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Offers Tab */}
           <TabsContent value="offers">
             <Card>
@@ -1080,7 +857,10 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" disabled={addBenefitMutation.isPending}>
+                      <Button
+                        type="submit"
+                        disabled={addBenefitMutation.isPending}
+                      >
                         Add Benefit
                       </Button>
                     </form>

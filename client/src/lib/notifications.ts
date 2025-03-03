@@ -28,13 +28,6 @@ export function notifyPointsAdded(points: number, newTotal: number) {
   });
 }
 
-export function notifySpecialEvent(name: string, multiplier: number, endDate: Date) {
-  showNotification("New Special Event!", {
-    body: `${name}: Earn ${multiplier}x points until ${endDate.toLocaleDateString()}`,
-    tag: "special-event"
-  });
-}
-
 export function notifySpecialOffer(title: string, validUntil: Date) {
   showNotification("New Special Offer!", {
     body: `${title}\nValid until ${validUntil.toLocaleDateString()}`,
