@@ -64,10 +64,10 @@ export default function AdminDashboard() {
     queryKey: ["/api/backup/history"],
   });
   const { data: memberHistory = [], isLoading: isLoadingHistory, error: historyError } = useQuery<PointTransaction[]>({
-    queryKey: ["/api/points", selectedMemberHistory?.id],
+    queryKey: ["/api/customers", selectedMemberHistory?.id, "transactions"],
     queryFn: async () => {
       if (!selectedMemberHistory) return [];
-      const res = await apiRequest("GET", `/api/points/${selectedMemberHistory.id}`);
+      const res = await apiRequest("GET", `/api/customers/${selectedMemberHistory.id}/transactions`);
       if (!res.ok) {
         throw new Error('Failed to fetch transaction history');
       }
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
       toast({ title: "Points added successfully" });
       notifyPointsAdded(data.points, data.totalPoints);
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/points"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", data.customerId, "transactions"] });
       form.reset();
       setSelectedCustomer(null);
     },
@@ -319,7 +319,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       toast({ title: "Points deducted successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/points"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", customerToDeduct?.id, "transactions"] });
       setShowDeductPoints(false);
       setCustomerToDeduct(null);
       deductPointsForm.reset();
