@@ -450,8 +450,15 @@ export default function AdminDashboard() {
     customer.level.toLowerCase().includes(memberSearchTerm.toLowerCase())
   );
 
+  // New filtered arrays for active items
   const filteredEvents = specialEvents.filter(event => event.level === eventLevel);
+  const filteredActiveEvents = filteredEvents.filter(event => event.active === true);
+
   const filteredOffers = specialOffers.filter(offer => offer.level === offerLevel);
+  const filteredActiveOffers = filteredOffers.filter(offer => offer.active === true);
+
+  const filteredBenefits = benefits.filter(benefit => benefit.level === selectedLevel);
+  const filteredActiveBenefits = filteredBenefits.filter(benefit => benefit.active === true);
 
   // Effects
   useEffect(() => {
@@ -795,7 +802,7 @@ export default function AdminDashboard() {
 
                   <div className="space-y-4">
                     <h3>Active Events for {eventLevel}</h3>
-                    {filteredEvents.map((event) => (
+                    {filteredActiveEvents.map((event) => (
                       <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <h4 className="font-medium">{event.name}</h4>
@@ -813,8 +820,8 @@ export default function AdminDashboard() {
                         />
                       </div>
                     ))}
-                    {filteredEvents.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No special events for {eventLevel} level</p>
+                    {filteredActiveEvents.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No active special events for {eventLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -908,7 +915,7 @@ export default function AdminDashboard() {
 
                   <div className="space-y-4">
                     <h3>Active Offers for {offerLevel}</h3>
-                    {filteredOffers.map((offer) => (
+                    {filteredActiveOffers.map((offer) => (
                       <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <h4 className="font-medium">{offer.title}</h4>
@@ -925,8 +932,8 @@ export default function AdminDashboard() {
                         />
                       </div>
                     ))}
-                    {filteredOffers.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No special offers for {offerLevel} level</p>
+                    {filteredActiveOffers.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No active special offers for {offerLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -958,7 +965,7 @@ export default function AdminDashboard() {
                   </Select>
 
                   <Form {...benefitForm}>
-                    <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y4">
+                    <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y-4">
                       <FormField
                         control={benefitForm.control}
                         name="benefit"
@@ -994,54 +1001,52 @@ export default function AdminDashboard() {
 
                   <div className="space-y-4">
                     <h3>Active Benefits for {selectedLevel}</h3>
-                    {benefits
-                      .filter(benefit => benefit.level === selectedLevel)
-                      .map((benefit) => (
-                        <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div>
-                            <h4 className="font-medium">{benefit.benefit}</h4>
-                          </div>
-                          <div className="flex gap-2 items-center">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const newBenefit = window.prompt("Enter new benefit description:", benefit.benefit);
-                                if (newBenefit) {
-                                  updateBenefitMutation.mutate({
-                                    id: benefit.id,
-                                    benefit: newBenefit
-                                  });
-                                }
-                              }}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                if (window.confirm("Are you sure you want to delete this benefit?")) {
-                                  deleteBenefitMutation.mutate(benefit.id);
-                                }
-                              }}
-                            >
-                              Delete
-                            </Button>
-                            <Switch
-                              checked={benefit.active}
-                              onCheckedChange={(checked) =>
+                    {filteredActiveBenefits.map((benefit) => (
+                      <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{benefit.benefit}</h4>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const newBenefit = window.prompt("Enter new benefit description:", benefit.benefit);
+                              if (newBenefit) {
                                 updateBenefitMutation.mutate({
                                   id: benefit.id,
-                                  active: checked
-                                })
+                                  benefit: newBenefit
+                                });
                               }
-                            />
-                          </div>
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (window.confirm("Are you sure you want to delete this benefit?")) {
+                                deleteBenefitMutation.mutate(benefit.id);
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                          <Switch
+                            checked={benefit.active}
+                            onCheckedChange={(checked) =>
+                              updateBenefitMutation.mutate({
+                                id: benefit.id,
+                                active: checked
+                              })
+                            }
+                          />
                         </div>
-                      ))}
-                    {benefits.filter(benefit => benefit.level === selectedLevel).length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">No benefits for this level</p>
+                      </div>
+                    ))}
+                    {filteredActiveBenefits.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No active benefits for {selectedLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -1320,7 +1325,7 @@ export default function AdminDashboard() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Points Change</TableHead>
+                      <TableHead>Points</TableHead>
                       <TableHead>Description</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1330,8 +1335,8 @@ export default function AdminDashboard() {
                         <TableCell>
                           {format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}
                         </TableCell>
-                        <TableCell className={transaction.points > 0 ? "text-green-600" : "text-red-600"}>
-                          {transaction.points > 0 ? "+" : ""}{transaction.points}
+                        <TableCell className={transaction.points >= 0 ? "text-green-600" : "text-red-600"}>
+                          {transaction.points >= 0 ? "+" : ""}{transaction.points}
                         </TableCell>
                         <TableCell>{transaction.description}</TableCell>
                       </TableRow>
