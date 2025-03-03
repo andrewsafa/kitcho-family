@@ -460,11 +460,6 @@ export default function AdminDashboard() {
   const filteredOffers = allOffers.filter(offer => offer.level === offerLevel);
   const filteredBenefits = allBenefits.filter(benefit => benefit.level === selectedLevel);
 
-  //Filter by active status for separate views if needed
-  const filteredActiveEvents = filteredEvents.filter(event => event.active === true);
-  const filteredActiveOffers = filteredOffers.filter(offer => offer.active === true);
-  const filteredActiveBenefits = filteredBenefits.filter(benefit => benefit.active === true);
-
   // Effects
   useEffect(() => {
     requestNotificationPermission();
@@ -806,7 +801,7 @@ export default function AdminDashboard() {
                   </Form>
 
                   <div className="space-y-4">
-                    <h3>Events for {eventLevel}</h3>
+                    <h3 className="text-lg font-medium">Events for {eventLevel}</h3>
                     {filteredEvents.map((event) => (
                       <div 
                         key={event.id} 
@@ -927,7 +922,7 @@ export default function AdminDashboard() {
                   </Form>
 
                   <div className="space-y-4">
-                    <h3>Offers for {offerLevel}</h3>
+                    <h3 className="text-lg font-medium">Offers for {offerLevel}</h3>
                     {filteredOffers.map((offer) => (
                       <div 
                         key={offer.id} 
@@ -992,9 +987,9 @@ export default function AdminDashboard() {
                         name="benefit"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>New Benefit</FormLabel>
+                            <FormLabel>Benefit Description</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter new benefit" {...field} />
+                              <Input placeholder="Enter benefit description" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1010,7 +1005,7 @@ export default function AdminDashboard() {
                   </Form>
 
                   <div className="space-y-4">
-                    <h3>Benefits for {selectedLevel}</h3>
+                    <h3 className="text-lg font-medium">Benefits for {selectedLevel}</h3>
                     {filteredBenefits.map((benefit) => (
                       <div 
                         key={benefit.id} 
@@ -1329,16 +1324,16 @@ export default function AdminDashboard() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="rounded-md border">
-              {isLoadingHistory ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Loading transaction history...
-                </div>
-              ) : historyError ? (
-                <div className="p-8 text-center text-red-500">
-                  Error loading transaction history. Please try again.
-                </div>
-              ) : (
+            {isLoadingHistory ? (
+              <div className="flex justify-center py-8">
+                <p>Loading history...</p>
+              </div>
+            ) : historyError ? (
+              <div className="text-red-500 py-4">
+                Error loading transaction history: {historyError.message}
+              </div>
+            ) : (
+              <div className="overflow-auto max-h-[60vh]">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1348,7 +1343,7 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {memberHistory?.map((transaction) => (
+                    {memberHistory.map((transaction) => (
                       <TableRow key={transaction.id}>
                         <TableCell>
                           {format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}
@@ -1359,20 +1354,22 @@ export default function AdminDashboard() {
                         <TableCell>{transaction.description}</TableCell>
                       </TableRow>
                     ))}
-                    {!isLoadingHistory && (!memberHistory?.length || memberHistory.length === 0) && (
+                    {memberHistory.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                          No transaction history found
+                          No transaction history available
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
-              )}
-            </div>
+              </div>
+            )}
 
             <DialogFooter>
-              <Button onClick={() => setSelectedMemberHistory(null)}>Close</Button>
+              <Button onClick={() => setSelectedMemberHistory(null)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
