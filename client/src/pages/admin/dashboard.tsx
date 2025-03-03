@@ -36,21 +36,9 @@ export default function AdminDashboard() {
   const [customerToDeduct, setCustomerToDeduct] = useState<Customer | null>(null);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Customer | null>(null);
 
-  // Query hooks
+  // Query hooks for common data
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
-  });
-
-  const { data: specialEvents = [] } = useQuery<SpecialEvent[]>({
-    queryKey: ["/api/events"],
-  });
-
-  const { data: specialOffers = [] } = useQuery<SpecialOffer[]>({
-    queryKey: ["/api/offers"],
-  });
-
-  const { data: benefits = [] } = useQuery<LevelBenefit[]>({
-    queryKey: ["/api/benefits"],
   });
 
   const { data: backupConfig } = useQuery<any>({
@@ -61,7 +49,44 @@ export default function AdminDashboard() {
     queryKey: ["/api/backup/history"],
   });
 
-  // Fix the transaction history query
+  // Level-specific queries
+  const { data: bronzeBenefits = [] } = useQuery<LevelBenefit[]>({
+    queryKey: ["/api/benefits/Bronze"],
+  });
+
+  const { data: silverBenefits = [] } = useQuery<LevelBenefit[]>({
+    queryKey: ["/api/benefits/Silver"],
+  });
+
+  const { data: goldBenefits = [] } = useQuery<LevelBenefit[]>({
+    queryKey: ["/api/benefits/Gold"],
+  });
+
+  const { data: diamondBenefits = [] } = useQuery<LevelBenefit[]>({
+    queryKey: ["/api/benefits/Diamond"],
+  });
+
+  const { data: bronzeOffers = [] } = useQuery<SpecialOffer[]>({
+    queryKey: ["/api/offers/Bronze"],
+  });
+
+  const { data: silverOffers = [] } = useQuery<SpecialOffer[]>({
+    queryKey: ["/api/offers/Silver"],
+  });
+
+  const { data: goldOffers = [] } = useQuery<SpecialOffer[]>({
+    queryKey: ["/api/offers/Gold"],
+  });
+
+  const { data: diamondOffers = [] } = useQuery<SpecialOffer[]>({
+    queryKey: ["/api/offers/Diamond"],
+  });
+
+  const { data: allEvents = [] } = useQuery<SpecialEvent[]>({
+    queryKey: ["/api/events"],
+  });
+
+  // Member transaction history query
   const { data: memberHistory = [], isLoading: isLoadingHistory, error: historyError } = useQuery<PointTransaction[]>({
     queryKey: ["/api/customers", selectedMemberHistory?.id, "transactions"],
     queryFn: async () => {
@@ -216,7 +241,7 @@ export default function AdminDashboard() {
     onSuccess: (data) => {
       toast({ title: "Special offer created successfully" });
       notifySpecialOffer(data.title, new Date(data.validUntil));
-      queryClient.invalidateQueries({ queryKey: ["/api/offers"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/offers/${data.level}`] });
       offerForm.reset();
     },
     onError: (error) => {
@@ -233,8 +258,8 @@ export default function AdminDashboard() {
       const res = await apiRequest("PATCH", `/api/offers/${id}`, { active });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/offers"] });
+    onSuccess: (offer) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/offers/${offer.level}`] });
     }
   });
 
@@ -243,9 +268,9 @@ export default function AdminDashboard() {
       const res = await apiRequest("POST", "/api/benefits", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (benefit) => {
       toast({ title: "Benefit added successfully!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/benefits"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/benefits/${benefit.level}`] });
       benefitForm.reset();
     },
     onError: (error) => {
@@ -258,8 +283,8 @@ export default function AdminDashboard() {
       const res = await apiRequest("PATCH", `/api/benefits/${data.id}`, data);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/benefits"] });
+    onSuccess: (benefit) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/benefits/${benefit.level}`] });
     }
   });
 
@@ -268,8 +293,20 @@ export default function AdminDashboard() {
       const res = await apiRequest("DELETE", `/api/benefits/${id}`);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/benefits"] });
+    onSuccess: (_, variables) => {
+      // Find the level of the deleted benefit to know which query to invalidate
+      const benefit = 
+        bronzeBenefits.find(b => b.id === variables) ||
+        silverBenefits.find(b => b.id === variables) ||
+        goldBenefits.find(b => b.id === variables) ||
+        diamondBenefits.find(b => b.id === variables);
+
+      if (benefit) {
+        queryClient.invalidateQueries({ queryKey: [`/api/benefits/${benefit.level}`] });
+      } else {
+        // If we can't determine the level, invalidate all benefit queries
+        queryClient.invalidateQueries({ queryKey: ["/api/benefits"] });
+      }
     }
   });
 
@@ -444,14 +481,31 @@ export default function AdminDashboard() {
     customer.level.toLowerCase().includes(memberSearchTerm.toLowerCase())
   );
 
-  // Filter by level
-  const filteredEvents = specialEvents.filter(event => event.level === eventLevel);
-  const filteredOffers = specialOffers.filter(offer => offer.level === offerLevel);
-  const filteredBenefits = benefits.filter(benefit => benefit.level === selectedLevel);
+  // Get level-specific data
+  const getLevelBenefits = (level: string) => {
+    switch (level) {
+      case "Bronze": return bronzeBenefits;
+      case "Silver": return silverBenefits;
+      case "Gold": return goldBenefits;
+      case "Diamond": return diamondBenefits;
+      default: return [];
+    }
+  };
 
-  console.log("Filtered Events:", filteredEvents);
-  console.log("Filtered Offers:", filteredOffers);
-  console.log("Filtered Benefits:", filteredBenefits);
+  const getLevelOffers = (level: string) => {
+    switch (level) {
+      case "Bronze": return bronzeOffers;
+      case "Silver": return silverOffers;
+      case "Gold": return goldOffers;
+      case "Diamond": return diamondOffers;
+      default: return [];
+    }
+  };
+
+  // Filter events by level
+  const getFilteredEvents = (level: string) => {
+    return allEvents.filter(event => event.level === level);
+  };
 
   // Effects
   useEffect(() => {
@@ -470,6 +524,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     benefitForm.setValue("level", selectedLevel);
   }, [selectedLevel, benefitForm]);
+
+  // Debug log
+  useEffect(() => {
+    console.log("Current benefits for", selectedLevel, ":", getLevelBenefits(selectedLevel));
+    console.log("Current offers for", offerLevel, ":", getLevelOffers(offerLevel));
+    console.log("Current events for", eventLevel, ":", getFilteredEvents(eventLevel));
+  }, [selectedLevel, offerLevel, eventLevel, bronzeBenefits, silverBenefits, goldBenefits, diamondBenefits, bronzeOffers, silverOffers, goldOffers, diamondOffers, allEvents]);
 
   // JSX
   return (
@@ -795,39 +856,41 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Simple Event List */}
-                  <div data-testid="event-list" className="mt-6">
+                  {/* Events Display */}
+                  <div className="mt-8 bg-white p-4 rounded-lg border">
                     <h3 className="text-lg font-medium mb-4">Events for {eventLevel}</h3>
-                    {filteredEvents && filteredEvents.length > 0 ? (
-                      filteredEvents.map((event) => (
-                        <div 
-                          key={event.id} 
-                          className="mb-4 p-4 border rounded-md shadow-sm"
-                          data-testid={`event-item-${event.id}`}
-                        >
-                          <div className="flex justify-between">
-                            <div>
-                              <h4 className="font-semibold">{event.name || "Unnamed Event"}</h4>
-                              <p className="text-gray-600">{event.description}</p>
-                              <div className="mt-2 text-sm">
-                                <p>Period: {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}</p>
-                                <p>Multiplier: {event.multiplier}x</p>
+                    <div className="debug-info text-xs text-gray-500 mb-2">
+                      {JSON.stringify(getFilteredEvents(eventLevel))}
+                    </div>
+
+                    {getFilteredEvents(eventLevel).length > 0 ? (
+                      <div className="space-y-4">
+                        {getFilteredEvents(eventLevel).map(event => (
+                          <div key={event.id} className="border p-4 rounded-lg">
+                            <div className="flex justify-between">
+                              <div>
+                                <h4 className="font-medium">{event.name}</h4>
+                                <p className="text-gray-600">{event.description}</p>
+                                <div className="mt-2 text-sm">
+                                  <p>Period: {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}</p>
+                                  <p>Multiplier: {event.multiplier}x</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span>{event.active ? "Active" : "Inactive"}</span>
+                                <Switch
+                                  checked={event.active}
+                                  onCheckedChange={(checked) => {
+                                    updateEventMutation.mutate({ id: event.id, active: checked });
+                                  }}
+                                />
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span>{event.active ? "Active" : "Inactive"}</span>
-                              <Switch
-                                checked={event.active}
-                                onCheckedChange={(checked) => {
-                                  updateEventMutation.mutate({ id: event.id, active: checked });
-                                }}
-                              />
-                            </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     ) : (
-                      <p className="text-center p-4 border rounded-md">No events found for {eventLevel} level</p>
+                      <p className="text-center p-4 border rounded-lg">No events found for {eventLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -874,7 +937,7 @@ export default function AdminDashboard() {
                         )}
                       />
                       <FormField
-                        control={offerForm.control}
+control={offerForm.control}
                         name="description"
                         render={({ field }) => (
                           <FormItem>
@@ -908,36 +971,38 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Simple Offer List */}
-                  <div data-testid="offer-list" className="mt-6">
+                  {/* Offers Display */}
+                  <div className="mt-8 bg-white p-4 rounded-lg border">
                     <h3 className="text-lg font-medium mb-4">Offers for {offerLevel}</h3>
-                    {filteredOffers && filteredOffers.length > 0 ? (
-                      filteredOffers.map((offer) => (
-                        <div 
-                          key={offer.id} 
-                          className="mb-4 p-4 border rounded-md shadow-sm"
-                          data-testid={`offer-item-${offer.id}`}
-                        >
-                          <div className="flex justify-between">
-                            <div>
-                              <h4 className="font-semibold">{offer.title || "Unnamed Offer"}</h4>
-                              <p className="text-gray-600">{offer.description}</p>
-                              <p className="mt-2 text-sm">Valid until: {new Date(offer.validUntil).toLocaleDateString()}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span>{offer.active ? "Active" : "Inactive"}</span>
-                              <Switch
-                                checked={offer.active}
-                                onCheckedChange={(checked) => {
-                                  updateOfferMutation.mutate({ id: offer.id, active: checked });
-                                }}
-                              />
+                    <div className="debug-info text-xs text-gray-500 mb-2">
+                      {JSON.stringify(getLevelOffers(offerLevel))}
+                    </div>
+
+                    {getLevelOffers(offerLevel).length > 0 ? (
+                      <div className="space-y-4">
+                        {getLevelOffers(offerLevel).map(offer => (
+                          <div key={offer.id} className="border p-4 rounded-lg">
+                            <div className="flex justify-between">
+                              <div>
+                                <h4 className="font-medium">{offer.title}</h4>
+                                <p className="text-gray-600">{offer.description}</p>
+                                <p className="mt-2 text-sm">Valid until: {new Date(offer.validUntil).toLocaleDateString()}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span>{offer.active ? "Active" : "Inactive"}</span>
+                                <Switch
+                                  checked={offer.active}
+                                  onCheckedChange={(checked) => {
+                                    updateOfferMutation.mutate({ id: offer.id, active: checked });
+                                  }}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     ) : (
-                      <p className="text-center p-4 border rounded-md">No offers found for {offerLevel} level</p>
+                      <p className="text-center p-4 border rounded-lg">No offers found for {offerLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -977,7 +1042,7 @@ export default function AdminDashboard() {
                           <FormItem>
                             <FormLabel>Benefit Description</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter benefit description" {...field} />
+                              <Input placeholder="Enter benefit" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -989,48 +1054,50 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Simple Benefit List */}
-                  <div data-testid="benefit-list" className="mt-6">
+                  {/* Benefits Display */}
+                  <div className="mt-8 bg-white p-4 rounded-lg border">
                     <h3 className="text-lg font-medium mb-4">Benefits for {selectedLevel}</h3>
-                    {filteredBenefits && filteredBenefits.length > 0 ? (
-                      filteredBenefits.map((benefit) => (
-                        <div 
-                          key={benefit.id} 
-                          className="mb-4 p-4 border rounded-md shadow-sm"
-                          data-testid={`benefit-item-${benefit.id}`}
-                        >
-                          <div className="flex justify-between">
-                            <div>
-                              <p>{benefit.benefit}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  if (window.confirm("Are you sure you want to delete this benefit?")) {
-                                    deleteBenefitMutation.mutate(benefit.id);
-                                  }
-                                }}
-                              >
-                                Delete
-                              </Button>
-                              <span>{benefit.active ? "Active" : "Inactive"}</span>
-                              <Switch
-                                checked={benefit.active}
-                                onCheckedChange={(checked) => {
-                                  updateBenefitMutation.mutate({
-                                    id: benefit.id,
-                                    active: checked
-                                  });
-                                }}
-                              />
+                    <div className="debug-info text-xs text-gray-500 mb-2">
+                      {JSON.stringify(getLevelBenefits(selectedLevel))}
+                    </div>
+
+                    {getLevelBenefits(selectedLevel).length > 0 ? (
+                      <div className="space-y-4">
+                        {getLevelBenefits(selectedLevel).map(benefit => (
+                          <div key={benefit.id} className="border p-4 rounded-lg">
+                            <div className="flex justify-between">
+                              <div className="font-medium">
+                                {benefit.benefit}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (window.confirm("Are you sure you want to delete this benefit?")) {
+                                      deleteBenefitMutation.mutate(benefit.id);
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                                <span>{benefit.active ? "Active" : "Inactive"}</span>
+                                <Switch
+                                  checked={benefit.active}
+                                  onCheckedChange={(checked) => {
+                                    updateBenefitMutation.mutate({
+                                      id: benefit.id,
+                                      active: checked
+                                    });
+                                  }}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     ) : (
-                      <p className="text-center p-4 border rounded-md">No benefits found for {selectedLevel} level</p>
+                      <p className="text-center p-4 border rounded-lg">No benefits found for {selectedLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -1300,6 +1367,12 @@ export default function AdminDashboard() {
                 No transaction history found
               </div>
             )}
+
+            <DialogFooter>
+              <Button onClick={() => setSelectedMemberHistory(null)}>
+                Close
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
