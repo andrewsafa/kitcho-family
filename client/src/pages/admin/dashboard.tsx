@@ -64,6 +64,7 @@ export default function AdminDashboard() {
     queryKey: ["/api/backup/history"],
   });
 
+  // Fix the transaction history query
   const { data: memberHistory = [], isLoading: isLoadingHistory, error: historyError } = useQuery<PointTransaction[]>({
     queryKey: ["/api/customers", selectedMemberHistory?.id, "transactions"],
     queryFn: async () => {
@@ -935,30 +936,29 @@ export default function AdminDashboard() {
 
           {/* Benefits Tab */}
           <TabsContent value="benefits">
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Level Benefits</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <Select
-                      value={selectedLevel}
-                      onValueChange={setSelectedLevel}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Bronze">Bronze</SelectItem>
-                        <SelectItem value="Silver">Silver</SelectItem>
-                        <SelectItem value="Gold">Gold</SelectItem>
-                        <SelectItem value="Diamond">Diamond</SelectItem>
-                      </SelectContent>
-                    </Select>
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Benefits</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <Select
+                    value={selectedLevel}
+                    onValueChange={setSelectedLevel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Diamond">Diamond</SelectItem>
+                    </SelectContent>
+                  </Select>
 
                   <Form {...benefitForm}>
-                    <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y-4">
+                    <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y4">
                       <FormField
                         control={benefitForm.control}
                         name="benefit"
@@ -992,252 +992,256 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                    <div className="space-y-4">
-                      <h3>Benefits for {selectedLevel}</h3>
-                      {benefits
-                        .filter((benefit) => benefit.level === selectedLevel)
-                        .map((benefit) => (
-                          <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div>
-                              <p>{benefit.benefit}</p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <Switch
-                                checked={benefit.active}
-                                onCheckedChange={(checked) =>
-                                  updateBenefitMutation.mutate({ id: benefit.id, active: checked })
-                                }
-                              />
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  if (window.confirm("Are you sure you want to delete this benefit?")) {
-                                    deleteBenefitMutation.mutate(benefit.id);
-                                  }
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
+                  <div className="space-y-4">
+                    <h3>Active Benefits for {selectedLevel}</h3>
+                    {benefits
+                      .filter(benefit => benefit.level === selectedLevel)
+                      .map((benefit) => (
+                        <div key={benefit.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div>
+                            <h4 className="font-medium">{benefit.benefit}</h4>
                           </div>
-                        ))}
-                      {benefits.filter((benefit) => benefit.level === selectedLevel).length === 0 && (
-                        <p className="text-muted-foreground text-center py-4">No benefits for {selectedLevel} level</p>
-                      )}
-                    </div>
+                          <div className="flex gap-2 items-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const newBenefit = window.prompt("Enter new benefit description:", benefit.benefit);
+                                if (newBenefit) {
+                                  updateBenefitMutation.mutate({
+                                    id: benefit.id,
+                                    benefit: newBenefit
+                                  });
+                                }
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this benefit?")) {
+                                  deleteBenefitMutation.mutate(benefit.id);
+                                }
+                              }}
+                            >
+                              Delete
+                            </Button>
+                            <Switch
+                              checked={benefit.active}
+                              onCheckedChange={(checked) =>
+                                updateBenefitMutation.mutate({
+                                  id: benefit.id,
+                                  active: checked
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    {benefits.filter(benefit => benefit.level === selectedLevel).length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">No benefits for this level</p>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Settings Tab */}
           <TabsContent value="settings">
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Admin Settings</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-medium">Change Password</h3>
-                      <Form {...changePasswordForm}>
-                        <form onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)} className="space-y-4 mt-2">
-                          <FormField
-                            control={changePasswordForm.control}
-                            name="currentPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Current Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={changePasswordForm.control}
-                            name="newPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>New Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={changePasswordForm.control}
-                            name="confirmPassword"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Confirm New Password</FormLabel>
-                                <FormControl>
-                                  <Input type="password" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button
-                            type="submit"
-                            disabled={changePasswordMutation.isPending}
-                          >
-                            Change Password
-                          </Button>
-                        </form>
-                      </Form>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-medium">Backup Settings</h3>
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowBackupSettings(!showBackupSettings)}
-                        >
-                          {showBackupSettings ? "Hide" : "Configure"}
-                        </Button>
-                      </div>
-
-                      {showBackupSettings && backupConfig && (
-                        <div className="space-y-4 bg-gray-50 dark:bg-gray-900 p-4 rounded-md">
-                          <div className="flex items-center gap-4">
-                            <Checkbox
-                              id="autoBackup"
-                              checked={backupConfig.enabled}
-                              onCheckedChange={(checked) =>
-                                updateBackupConfigMutation.mutate({
-                                  ...backupConfig,
-                                  enabled: !!checked,
-                                })
-                              }
-                            />
-                            <label htmlFor="autoBackup" className="text-sm font-medium">
-                              Enable Automatic Backups
-                            </label>
-                          </div>
-
-                          <div className="grid gap-2">
-                            <label className="text-sm font-medium">Backup Frequency</label>
-                            <Select
-                              value={backupConfig.frequency}
-                              onValueChange={(value) =>
-                                updateBackupConfigMutation.mutate({
-                                  ...backupConfig,
-                                  frequency: value,
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select frequency" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="daily">Daily</SelectItem>
-                                <SelectItem value="weekly">Weekly</SelectItem>
-                                <SelectItem value="monthly">Monthly</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="grid gap-2">
-                            <label className="text-sm font-medium">Maximum Backup Count</label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="50"
-                              value={backupConfig.maxCount}
-                              onChange={(e) =>
-                                updateBackupConfigMutation.mutate({
-                                  ...backupConfig,
-                                  maxCount: parseInt(e.target.value),
-                                })
-                              }
-                            />
-                          </div>
-
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              runBackupMutation.mutate();
-                            }}
-                            disabled={runBackupMutation.isPending}
-                          >
-                            Run Backup Now
-                          </Button>
-                        </div>
-                      )}
-
-                      <div className="mt-4">
-                        <h4 className="text-md font-medium mb-2">Recent Backups</h4>
-                        <div className="border rounded-md overflow-hidden">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Status</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {backupHistory.map((backup, index) => (
-                                <TableRow key={index}>
-                                  <TableCell>
-                                    {format(new Date(backup.timestamp), "MMM d, yyyy h:mm a")}
-                                  </TableCell>
-                                  <TableCell>{backup.type}</TableCell>
-                                  <TableCell>{backup.status}</TableCell>
-                                </TableRow>
-                              ))}
-                              {backupHistory.length === 0 && (
-                                <TableRow>
-                                  <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                                    No backup history
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Backup Configuration</h3>
+                    <Button
+                      onClick={() => setShowBackupSettings(true)}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Configure Backup Settings
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Change Password</h3>
+                    <Form {...changePasswordForm}>
+                      <form
+                        onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)}
+                        className="space-y-4"
+                      >
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="currentPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Current Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="newPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirm New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="submit"
+                          disabled={changePasswordMutation.isPending}
+                        >
+                          Change Password
+                        </Button>
+                      </form>
+                    </Form>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
-        {/* Deduct Points Dialog */}
+        {/* Keep existing backup settings dialog */}
+        <Dialog open={showBackupSettings} onOpenChange={setShowBackupSettings}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Backup Settings</DialogTitle>
+              <DialogDescription>
+                Configure automated backup schedule and retention.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enabled"
+                  checked={backupConfig?.enabled}
+                  onCheckedChange={(checked) =>
+                    updateBackupConfigMutation.mutate({ enabled: checked })
+                  }
+                />
+                <label htmlFor="enabled">Enable Automated Backups</label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Backup Frequency</label>
+                <Select
+                  value={backupConfig?.frequency}
+                  onValueChange={(value) =>
+                    updateBackupConfigMutation.mutate({ frequency: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0 0 * * *">Daily (Midnight)</SelectItem>
+                    <SelectItem value="0 0 * * 0">Weekly (Sunday)</SelectItem>
+                    <SelectItem value="0 0 1 * *">Monthly (1st)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email Notifications</label>
+                <Input
+                  type="email"
+                  placeholder="Enter email address"
+                  value={backupConfig?.emailTo || ""}
+                  onChange={(e) =>
+                    updateBackupConfigMutation.mutate({ emailTo: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Maximum Backups</label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={backupConfig?.maxBackups || ""}
+                  onChange={(e) =>
+                    updateBackupConfigMutation.mutate({ maxBackups: parseInt(e.target.value) })
+                  }
+                />
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Backup History</h4>
+                <div className="space-y-2">
+                  {backupHistory.map((backup) => (
+                    <div key={backup.timestamp} className="text-sm">
+                      <span>{new Date(backup.timestamp).toLocaleString()}</span>
+                      <span className="mx-2">-</span>
+                      <span>{(backup.size / 1024).toFixed(2)} KB</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button onClick={() => setShowBackupSettings(false)}>
+                Close
+              </Button>
+              <Button
+                onClick={() => runBackupMutation.mutate()}
+                disabled={runBackupMutation.isPending}
+              >
+                Run Backup Now
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Add the deduct points dialog in the JSX, after the backup dialog */}
         <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Deduct Points</DialogTitle>
               <DialogDescription>
-                {customerToDeduct && (
-                  <span>
-                    Deduct points from {customerToDeduct.name} ({customerToDeduct.mobile})
-                  </span>
-                )}
+                {customerToDeduct && `Deduct points from ${customerToDeduct.name}. Current points: ${customerToDeduct.points}`}
               </DialogDescription>
             </DialogHeader>
+
             <Form {...deductPointsForm}>
-              <form
-                onSubmit={deductPointsForm.handleSubmit((data) => {
-                  if (customerToDeduct) {
-                    deductPointsMutation.mutate({
-                      customerId: customerToDeduct.id,
-                      points: data.points,
-                      reason: data.reason
-                    });
-                  }
-                })}
-                className="space-y-4"
+              <form onSubmit={deductPointsForm.handleSubmit((data) => {
+                if (!customerToDeduct) return;
+                deductPointsMutation.mutate({
+                  customerId: customerToDeduct.id,
+                  points: data.points,
+                  reason: data.reason
+                });
+              })}
+              className="space-y-4"
               >
                 <FormField
                   control={deductPointsForm.control}
@@ -1248,8 +1252,8 @@ export default function AdminDashboard() {
                       <FormControl>
                         <Input
                           type="number"
-                          min="1"
-                          max={customerToDeduct?.points || 0}
+                          min={1}
+                          max={customerToDeduct?.points}
                           {...field}
                           onChange={(e) => field.onChange(e.target.valueAsNumber)}
                         />
@@ -1258,6 +1262,7 @@ export default function AdminDashboard() {
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={deductPointsForm.control}
                   name="reason"
@@ -1265,16 +1270,17 @@ export default function AdminDashboard() {
                     <FormItem>
                       <FormLabel>Reason</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter reason for deducting points" {...field} />
+                        <Input {...field} placeholder="Enter reason for deducting points" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <div className="flex justify-end gap-2">
+
+                <DialogFooter>
                   <Button
-                    type="button"
                     variant="outline"
+                    type="button"
                     onClick={() => setShowDeductPoints(false)}
                   >
                     Cancel
@@ -1285,23 +1291,18 @@ export default function AdminDashboard() {
                   >
                     Deduct Points
                   </Button>
-                </div>
+                </DialogFooter>
               </form>
             </Form>
           </DialogContent>
         </Dialog>
-
-        {/* Member History Dialog */}
+        {/* Add Member History Dialog after other dialogs */}
         <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Transaction History</DialogTitle>
+              <DialogTitle>Points History - {selectedMemberHistory?.name}</DialogTitle>
               <DialogDescription>
-                {selectedMemberHistory && (
-                  <span>
-                    Transaction history for {selectedMemberHistory.name} ({selectedMemberHistory.mobile})
-                  </span>
-                )}
+                Current Points: {selectedMemberHistory?.points} | Level: {selectedMemberHistory?.level}
               </DialogDescription>
             </DialogHeader>
 
