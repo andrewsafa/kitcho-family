@@ -4,21 +4,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialEvent, type SpecialOffer, type PointTransaction, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema } from "@shared/schema";
+import { type Customer, type InsertPointTransaction, type PointTransaction } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Search, Download, Upload, Settings, CreditCard, Calendar, Gift, Award, Cog, Users } from "lucide-react";
+import { CreditCard, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
-import { showNotification, notifyPointsAdded, notifySpecialEvent, notifySpecialOffer, requestNotificationPermission } from "@/lib/notifications";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -28,12 +24,6 @@ export default function AdminDashboard() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
-  const [eventLevel, setEventLevel] = useState("Bronze");
-  const [offerLevel, setOfferLevel] = useState("Bronze");
-  const [showBackupSettings, setShowBackupSettings] = useState(false);
-  const [selectedLevel, setSelectedLevel] = useState("Bronze");
-  const [showDeductPoints, setShowDeductPoints] = useState(false);
-  const [customerToDeduct, setCustomerToDeduct] = useState<Customer | null>(null);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Customer | null>(null);
 
   // Query hooks
@@ -41,31 +31,11 @@ export default function AdminDashboard() {
     queryKey: ["/api/customers"]
   });
 
-  const { data: specialEvents = [] } = useQuery<SpecialEvent[]>({
-    queryKey: ["/api/events"]
-  });
-
-  const { data: specialOffers = [] } = useQuery<SpecialOffer[]>({
-    queryKey: ["/api/offers"]
-  });
-
-  const { data: benefits = [] } = useQuery<LevelBenefit[]>({
-    queryKey: ["/api/benefits"]
-  });
-
-  const { data: backupConfig } = useQuery<any>({
-    queryKey: ["/api/backup/config"]
-  });
-
-  const { data: backupHistory = [] } = useQuery<any[]>({
-    queryKey: ["/api/backup/history"]
-  });
-
   const { data: memberHistory = [], isLoading: isLoadingHistory } = useQuery<PointTransaction[]>({
     queryKey: ["/api/points", selectedMemberHistory?.id],
     queryFn: async () => {
       if (!selectedMemberHistory) return [];
-      const res = await apiRequest("GET", `/api/points/${selectedMemberHistory.id}`);
+      const res = await apiRequest("GET", `/api/customers/${selectedMemberHistory.id}/transactions`);
       if (!res.ok) {
         throw new Error('Failed to fetch transaction history');
       }
@@ -74,10 +44,6 @@ export default function AdminDashboard() {
     },
     enabled: !!selectedMemberHistory
   });
-
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
 
   // Form schemas
   const formSchema = z.object({
@@ -151,7 +117,6 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center mb-8">
-          <img src="/logo.png" alt="Kitcho Family Logo" className="h-24 mx-auto" />
           <h1 className="text-2xl font-bold mt-4">Admin Dashboard</h1>
         </div>
 
