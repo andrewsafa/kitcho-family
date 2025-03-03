@@ -35,7 +35,7 @@ export async function registerRoutes(app: Express) {
       res.status(201).json(customer);
     } catch (error) {
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: "Internal server error" });
       }
@@ -72,6 +72,11 @@ export async function registerRoutes(app: Express) {
   });
 
   // Level Benefits routes
+  app.get("/api/benefits", async (req, res) => {
+    const benefits = await storage.getAllBenefits();
+    res.json(benefits);
+  });
+
   app.get("/api/benefits/:level", async (req, res) => {
     const benefits = await storage.getLevelBenefits(req.params.level);
     res.json(benefits);
@@ -84,7 +89,7 @@ export async function registerRoutes(app: Express) {
       res.status(201).json(benefit);
     } catch (error) {
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: "Internal server error" });
       }
@@ -130,7 +135,7 @@ export async function registerRoutes(app: Express) {
       res.json(customer);
     } catch (error) {
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: "Internal server error" });
       }
@@ -175,7 +180,7 @@ export async function registerRoutes(app: Express) {
       res.status(201).json(event);
     } catch (error) {
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: "Internal server error" });
       }
@@ -194,19 +199,51 @@ export async function registerRoutes(app: Express) {
   });
 
   // Special Offers routes
+  app.get("/api/offers", async (_req, res) => {
+    const offers = await storage.getAllOffers();
+    res.json(offers);
+  });
+
   app.get("/api/offers/:level", async (req, res) => {
     const offers = await storage.getSpecialOffers(req.params.level);
     res.json(offers);
   });
 
-  app.post("/api/offers", requireAdmin, async (req, res) => {
+  // Update Special Offers POST route to handle image uploads
+  app.post("/api/offers", requireAdmin, upload.single('image'), async (req, res) => {
     try {
-      const offerData = insertSpecialOfferSchema.parse(req.body);
+      // Ensure directory exists
+      await fs.mkdir("./store-assets", { recursive: true });
+
+      let imagePath = null;
+      if (req.file) {
+        // Process the image with sharp
+        const processedImageName = `offer-${Date.now()}.png`;
+        const processedImagePath = `./store-assets/${processedImageName}`;
+
+        await sharp(req.file.path)
+          .resize(800) // Resize to max width 800px, maintain aspect ratio
+          .png()
+          .toFile(processedImagePath);
+
+        // Remove the original uploaded file
+        await fs.unlink(req.file.path);
+
+        // Set the image path to be stored in the database
+        imagePath = processedImageName;
+      }
+
+      // Parse and validate the offer data
+      const offerData = insertSpecialOfferSchema.parse({
+        ...req.body,
+        imagePath: imagePath
+      });
+
       const offer = await storage.createSpecialOffer(offerData);
       res.status(201).json(offer);
     } catch (error) {
       if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
+        res.status(400).json({ message: error.message });
       } else {
         res.status(500).json({ message: "Internal server error" });
       }
@@ -273,6 +310,16 @@ export async function registerRoutes(app: Express) {
       res.json({ message: "Data restored successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to restore data" });
+    }
+  });
+
+  // Serve offer images
+  app.use("/api/offer-images/:imageName", async (req, res) => {
+    try {
+      const imagePath = path.join("./store-assets", req.params.imageName);
+      res.sendFile(path.resolve(imagePath));
+    } catch (error) {
+      res.status(404).json({ message: "Image not found" });
     }
   });
 
@@ -359,9 +406,7 @@ export async function registerRoutes(app: Express) {
         contactPhone: storeData.contactPhone,
         iconPath: files.icon?.[0] ? 'icon.png' : null,
         featureGraphicPath: files.featureGraphic?.[0] ? 'feature.png' : null,
-        screenshotPaths: files.screenshots?.map((_, index) => `screenshot-${index + 1}.png`) || [],
-        status: 'pending',
-        createdAt: new Date()
+        screenshotPaths: files.screenshots?.map((_, index) => `screenshot-${index + 1}.png`) || []
       });
 
       res.status(201).json({
@@ -372,7 +417,7 @@ export async function registerRoutes(app: Express) {
       console.error('Store submission error:', error);
       res.status(500).json({
         message: "Failed to process store submission",
-        error: error.message
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });

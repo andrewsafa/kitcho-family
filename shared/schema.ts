@@ -49,6 +49,7 @@ export const specialOffers = pgTable("special_offers", {
   description: text("description").notNull(),
   validUntil: timestamp("valid_until").notNull(),
   active: boolean("active").notNull().default(true),
+  imagePath: text("image_path"), // Added imagePath field
 });
 
 export const storeSubmissions = pgTable("store_submissions", {
@@ -109,8 +110,10 @@ export const insertSpecialOfferSchema = createInsertSchema(specialOffers).pick({
   title: true,
   description: true,
   validUntil: true,
+  imagePath: true, // Added imagePath field
 }).extend({
   validUntil: z.string().transform(str => new Date(str)),
+  imagePath: z.string().optional(),
 });
 
 export const insertStoreSubmissionSchema = createInsertSchema(storeSubmissions).pick({

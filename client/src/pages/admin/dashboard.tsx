@@ -209,8 +209,12 @@ export default function AdminDashboard() {
   });
 
   const addOfferMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof insertSpecialOfferSchema>) => {
-      const res = await apiRequest("POST", "/api/offers", data);
+    mutationFn: async (data: FormData) => {
+      const res = await fetch("/api/offers", {
+        method: "POST",
+        body: data,
+      });
+      if (!res.ok) throw new Error("Failed to create offer");
       return res.json();
     },
     onSuccess: (data) => {
@@ -434,11 +438,19 @@ export default function AdminDashboard() {
   };
 
   const onOfferSubmit = (data: z.infer<typeof insertSpecialOfferSchema>) => {
-    const offerData = {
-      ...data,
-      level: offerLevel
-    };
-    addOfferMutation.mutate(offerData);
+    const formData = new FormData();
+    formData.append('level', offerLevel);
+    formData.append('title', data.title);
+    formData.append('description', data.description);
+    formData.append('validUntil', data.validUntil);
+
+    // Get the file input element and check if it has files
+    const fileInput = document.getElementById('image') as HTMLInputElement;
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      formData.append('image', fileInput.files[0]);
+    }
+
+    addOfferMutation.mutate(formData);
   };
 
   // Filter data
@@ -844,7 +856,7 @@ export default function AdminDashboard() {
                   </Select>
 
                   <Form {...offerForm}>
-                    <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4">
+                    <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4" encType="multipart/form-data">
                       <FormField
                         control={offerForm.control}
                         name="level"
@@ -895,6 +907,15 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
+                      <div className="space-y-2">
+                        <FormLabel htmlFor="image">Offer Image (Optional)</FormLabel>
+                        <Input 
+                          id="image" 
+                          name="image" 
+                          type="file" 
+                          accept="image/*"
+                        />
+                      </div>
                       <Button
                         type="submit"
                         disabled={addOfferMutation.isPending}
@@ -908,12 +929,23 @@ export default function AdminDashboard() {
                     <h3>Active Offers for {offerLevel}</h3>
                     {filteredOffers.map((offer) => (
                       <div key={offer.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{offer.title}</h4>
-                          <p className="text-sm text-muted-foreground">{offer.description}</p>
-                          <p className="text-sm">
-                            Valid until {format(new Date(offer.validUntil), "MMM d, yyyy")}
-                          </p>
+                        <div className="flex gap-4 items-center">
+                          {offer.imagePath && (
+                            <div className="h-16 w-16 overflow-hidden rounded-md">
+                              <img 
+                                src={`/api/offer-images/${offer.imagePath}`} 
+                                alt={offer.title} 
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="font-medium">{offer.title}</h4>
+                            <p className="text-sm text-muted-foreground">{offer.description}</p>
+                            <p className="text-sm">
+                              Valid until: {format(new Date(offer.validUntil), "MMM d, yyyy")}
+                            </p>
+                          </div>
                         </div>
                         <Switch
                           checked={offer.active}
