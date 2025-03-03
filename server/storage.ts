@@ -75,9 +75,6 @@ export interface IStorage {
   deleteStoreSubmission(id: number): Promise<void>;
   updateStoreSubmission(id: number, submission: Partial<InsertStoreSubmission>): Promise<StoreSubmission>;
   deleteLevelBenefit(id: number): Promise<void>;
-  // Add the missing methods
-  getAllBenefits(): Promise<LevelBenefit[]>;
-  getAllOffers(): Promise<SpecialOffer[]>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -402,21 +399,6 @@ export class PostgresStorage implements IStorage {
   }
   async deleteLevelBenefit(id: number): Promise<void> {
     await db.delete(levelBenefits).where(eq(levelBenefits.id, id));
-  }
-
-  // Add the missing methods
-  async getAllBenefits(): Promise<LevelBenefit[]> {
-    return await db
-      .select()
-      .from(levelBenefits)
-      .orderBy(desc(levelBenefits.lastUpdated));
-  }
-
-  async getAllOffers(): Promise<SpecialOffer[]> {
-    return await db
-      .select()
-      .from(specialOffers)
-      .orderBy(desc(specialOffers.validUntil));
   }
 }
 
