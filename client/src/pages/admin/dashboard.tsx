@@ -41,34 +41,16 @@ export default function AdminDashboard() {
     queryKey: ["/api/customers"],
   });
 
-  const { data: specialEvents = [], onSuccess: eventsOnSuccess, onError: eventsOnError } = useQuery<SpecialEvent[]>({
+  const { data: specialEvents = [] } = useQuery<SpecialEvent[]>({
     queryKey: ["/api/events"],
-    onSuccess: (data) => {
-      console.log("Events loaded:", data);
-    },
-    onError: (error) => {
-      console.error("Error loading events:", error);
-    }
   });
 
-  const { data: specialOffers = [], onSuccess: offersOnSuccess, onError: offersOnError } = useQuery<SpecialOffer[]>({
+  const { data: specialOffers = [] } = useQuery<SpecialOffer[]>({
     queryKey: ["/api/offers"],
-    onSuccess: (data) => {
-      console.log("Offers loaded:", data);
-    },
-    onError: (error) => {
-      console.error("Error loading offers:", error);
-    }
   });
 
-  const { data: benefits = [], onSuccess: benefitsOnSuccess, onError: benefitsOnError } = useQuery<LevelBenefit[]>({
+  const { data: benefits = [] } = useQuery<LevelBenefit[]>({
     queryKey: ["/api/benefits"],
-    onSuccess: (data) => {
-      console.log("Benefits loaded:", data);
-    },
-    onError: (error) => {
-      console.error("Error loading benefits:", error);
-    }
   });
 
   const { data: backupConfig } = useQuery<any>({
@@ -313,7 +295,7 @@ export default function AdminDashboard() {
 
   const changePasswordMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/auth/change-password", data);
+      const res = await apiRequest("POST", "/api/admin/change-password", data);
       return res.json();
     },
     onSuccess: () => {
@@ -371,12 +353,8 @@ export default function AdminDashboard() {
 
   const handleBackup = async () => {
     try {
-      const res = await apiRequest("POST", "/api/backup/run");
-      if (res.ok) {
-        toast({ title: "Backup initiated successfully" });
-      } else {
-        toast({ variant: "destructive", title: "Error initiating backup", description: await res.text() });
-      }
+      runBackupMutation.mutate();
+      toast({ title: "Backup initiated successfully" });
     } catch (error) {
       toast({ variant: "destructive", title: "Error initiating backup", description: (error as Error).message });
     }
@@ -392,7 +370,7 @@ export default function AdminDashboard() {
         const formData = new FormData();
         formData.append('backup', file);
         try {
-          const res = await apiRequest("POST", "/api/backup/restore", formData);
+          const res = await apiRequest("POST", "/api/restore", formData);
           if (res.ok) {
             toast({ title: "Restore initiated successfully" });
             window.location.reload();
@@ -817,37 +795,39 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Events Display */}
-                  <div className="mt-8">
-                    <h3 className="text-lg font-medium mb-4">Current Events for {eventLevel}</h3>
+                  {/* Simple Event List */}
+                  <div data-testid="event-list" className="mt-6">
+                    <h3 className="text-lg font-medium mb-4">Events for {eventLevel}</h3>
                     {filteredEvents && filteredEvents.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredEvents.map(event => (
-                          <div key={event.id} className="border p-4 rounded">
-                            <div className="flex justify-between">
-                              <div>
-                                <p className="font-bold">{event.name}</p>
-                                <p>{event.description}</p>
-                                <p>From {format(new Date(event.startDate), "MMM d, yyyy")} to {format(new Date(event.endDate), "MMM d, yyyy")}</p>
+                      filteredEvents.map((event) => (
+                        <div 
+                          key={event.id} 
+                          className="mb-4 p-4 border rounded-md shadow-sm"
+                          data-testid={`event-item-${event.id}`}
+                        >
+                          <div className="flex justify-between">
+                            <div>
+                              <h4 className="font-semibold">{event.name || "Unnamed Event"}</h4>
+                              <p className="text-gray-600">{event.description}</p>
+                              <div className="mt-2 text-sm">
+                                <p>Period: {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}</p>
                                 <p>Multiplier: {event.multiplier}x</p>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <span className={event.active ? "text-green-600" : "text-gray-400"}>
-                                  {event.active ? "Active" : "Inactive"}
-                                </span>
-                                <Switch
-                                  checked={event.active}
-                                  onCheckedChange={(checked) =>
-                                    updateEventMutation.mutate({ id: event.id, active: checked })
-                                  }
-                                />
-                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span>{event.active ? "Active" : "Inactive"}</span>
+                              <Switch
+                                checked={event.active}
+                                onCheckedChange={(checked) => {
+                                  updateEventMutation.mutate({ id: event.id, active: checked });
+                                }}
+                              />
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))
                     ) : (
-                      <p>No events found for {eventLevel} level.</p>
+                      <p className="text-center p-4 border rounded-md">No events found for {eventLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -928,36 +908,36 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Offers Display */}
-                  <div className="mt-8">
-                    <h3 className="text-lg font-medium mb-4">Current Offers for {offerLevel}</h3>
+                  {/* Simple Offer List */}
+                  <div data-testid="offer-list" className="mt-6">
+                    <h3 className="text-lg font-medium mb-4">Offers for {offerLevel}</h3>
                     {filteredOffers && filteredOffers.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredOffers.map(offer => (
-                          <div key={offer.id} className="border p-4 rounded">
-                            <div className="flex justify-between">
-                              <div>
-                                <p className="font-bold">{offer.title}</p>
-                                <p>{offer.description}</p>
-                                <p>Valid until: {format(new Date(offer.validUntil), "MMM d, yyyy")}</p>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <span className={offer.active ? "text-green-600" : "text-gray-400"}>
-                                  {offer.active ? "Active" : "Inactive"}
-                                </span>
-                                <Switch
-                                  checked={offer.active}
-                                  onCheckedChange={(checked) =>
-                                    updateOfferMutation.mutate({ id: offer.id, active: checked })
-                                  }
-                                />
-                              </div>
+                      filteredOffers.map((offer) => (
+                        <div 
+                          key={offer.id} 
+                          className="mb-4 p-4 border rounded-md shadow-sm"
+                          data-testid={`offer-item-${offer.id}`}
+                        >
+                          <div className="flex justify-between">
+                            <div>
+                              <h4 className="font-semibold">{offer.title || "Unnamed Offer"}</h4>
+                              <p className="text-gray-600">{offer.description}</p>
+                              <p className="mt-2 text-sm">Valid until: {new Date(offer.validUntil).toLocaleDateString()}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span>{offer.active ? "Active" : "Inactive"}</span>
+                              <Switch
+                                checked={offer.active}
+                                onCheckedChange={(checked) => {
+                                  updateOfferMutation.mutate({ id: offer.id, active: checked });
+                                }}
+                              />
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))
                     ) : (
-                      <p>No offers found for {offerLevel} level.</p>
+                      <p className="text-center p-4 border rounded-md">No offers found for {offerLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -1009,45 +989,48 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Benefits Display */}
-                  <div className="mt-8">
-                    <h3 className="text-lg font-medium mb-4">Current Benefits for {selectedLevel}</h3>
+                  {/* Simple Benefit List */}
+                  <div data-testid="benefit-list" className="mt-6">
+                    <h3 className="text-lg font-medium mb-4">Benefits for {selectedLevel}</h3>
                     {filteredBenefits && filteredBenefits.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredBenefits.map(benefit => (
-                          <div key={benefit.id} className="border p-4 rounded">
-                            <div className="flex justify-between">
-                              <div>
-                                <p>{benefit.benefit}</p>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (window.confirm("Are you sure you want to delete this benefit?")) {
-                                      deleteBenefitMutation.mutate(benefit.id);
-                                    }
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                                <span className={benefit.active ? "text-green-600" : "text-gray-400"}>
-                                  {benefit.active ? "Active" : "Inactive"}
-                                </span>
-                                <Switch
-                                  checked={benefit.active}
-                                  onCheckedChange={(checked) =>
-                                    updateBenefitMutation.mutate({ id: benefit.id, active: checked })
+                      filteredBenefits.map((benefit) => (
+                        <div 
+                          key={benefit.id} 
+                          className="mb-4 p-4 border rounded-md shadow-sm"
+                          data-testid={`benefit-item-${benefit.id}`}
+                        >
+                          <div className="flex justify-between">
+                            <div>
+                              <p>{benefit.benefit}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  if (window.confirm("Are you sure you want to delete this benefit?")) {
+                                    deleteBenefitMutation.mutate(benefit.id);
                                   }
-                                />
-                              </div>
+                                }}
+                              >
+                                Delete
+                              </Button>
+                              <span>{benefit.active ? "Active" : "Inactive"}</span>
+                              <Switch
+                                checked={benefit.active}
+                                onCheckedChange={(checked) => {
+                                  updateBenefitMutation.mutate({
+                                    id: benefit.id,
+                                    active: checked
+                                  });
+                                }}
+                              />
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))
                     ) : (
-                      <p>No benefits found for {selectedLevel} level.</p>
+                      <p className="text-center p-4 border rounded-md">No benefits found for {selectedLevel} level</p>
                     )}
                   </div>
                 </div>
@@ -1292,52 +1275,31 @@ export default function AdminDashboard() {
             </DialogHeader>
 
             {isLoadingHistory ? (
-              <div className="flex justify-center py-8">
-                <p>Loading history...</p>
-              </div>
-            ) : historyError ? (
-              <div className="text-red-500 py-4">
-                Error loading transaction history: {historyError.message}
+              <div className="text-center py-8">Loading history...</div>
+            ) : memberHistory && memberHistory.length > 0 ? (
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                {memberHistory.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="flex justify-between items-start border-b pb-4"
+                  >
+                    <div>
+                      <p className="font-medium">{transaction.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(transaction.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    <span className={transaction.points >= 0 ? "text-green-600" : "text-red-600"}>
+                      {transaction.points >= 0 ? "+" : ""}{transaction.points}
+                    </span>
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="overflow-auto max-h-[60vh]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Points</TableHead>
-                      <TableHead>Description</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {memberHistory.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>
-                          {format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}
-                        </TableCell>
-                        <TableCell className={transaction.points >= 0 ? "text-green-600" : "text-red-600"}>
-                          {transaction.points >= 0 ? "+" : ""}{transaction.points}
-                        </TableCell>
-                        <TableCell>{transaction.description}</TableCell>
-                      </TableRow>
-                    ))}
-                    {memberHistory.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                          No transaction history available
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+              <div className="text-center py-8 text-muted-foreground">
+                No transaction history found
               </div>
             )}
-
-            <DialogFooter>
-              <Button onClick={() => setSelectedMemberHistory(null)}>
-                Close
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
