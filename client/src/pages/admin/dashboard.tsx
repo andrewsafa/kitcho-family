@@ -120,7 +120,7 @@ export default function AdminDashboard() {
   const benefitForm = useForm({
     resolver: zodResolver(insertLevelBenefitSchema),
     defaultValues: {
-      level: eventLevel,
+      level: selectedLevel,
       benefit: ""
     }
   });
@@ -450,15 +450,10 @@ export default function AdminDashboard() {
     customer.level.toLowerCase().includes(memberSearchTerm.toLowerCase())
   );
 
-  // Get all events, offers, benefits regardless of status
-  const allEvents = specialEvents;
-  const allOffers = specialOffers;
-  const allBenefits = benefits;
-
   // Filter by level
-  const filteredEvents = allEvents.filter(event => event.level === eventLevel);
-  const filteredOffers = allOffers.filter(offer => offer.level === offerLevel);
-  const filteredBenefits = allBenefits.filter(benefit => benefit.level === selectedLevel);
+  const filteredEvents = specialEvents.filter(event => event.level === eventLevel);
+  const filteredOffers = specialOffers.filter(offer => offer.level === offerLevel);
+  const filteredBenefits = benefits.filter(benefit => benefit.level === selectedLevel);
 
   // Effects
   useEffect(() => {
@@ -708,17 +703,6 @@ export default function AdminDashboard() {
                     <form onSubmit={eventForm.handleSubmit(onEventSubmit)} className="space-y-4">
                       <FormField
                         control={eventForm.control}
-                        name="level"
-                        render={({ field }) => (
-                          <FormItem className="hidden">
-                            <FormControl>
-                              <Input {...field} value={eventLevel} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={eventForm.control}
                         name="name"
                         render={({ field }) => (
                           <FormItem>
@@ -862,17 +846,6 @@ export default function AdminDashboard() {
 
                   <Form {...offerForm}>
                     <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4">
-                      <FormField
-                        control={offerForm.control}
-                        name="level"
-                        render={({ field }) => (
-                          <FormItem className="hidden">
-                            <FormControl>
-                              <Input {...field} value={offerLevel} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
                       <FormField
                         control={offerForm.control}
                         name="title"
@@ -1041,7 +1014,7 @@ export default function AdminDashboard() {
                           >
                             Delete
                           </Button>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center space-x-2">
                             <span className={benefit.active ? "text-green-600 font-medium" : "text-gray-400"}>
                               {benefit.active ? "Active" : "Inactive"}
                             </span>
@@ -1240,6 +1213,7 @@ export default function AdminDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
         {/* Add the deduct points dialog in the JSX, after the backup dialog */}
         <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
           <DialogContent>
@@ -1314,6 +1288,7 @@ export default function AdminDashboard() {
             </Form>
           </DialogContent>
         </Dialog>
+
         {/* Add Member History Dialog after other dialogs */}
         <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
           <DialogContent className="max-w-4xl">
