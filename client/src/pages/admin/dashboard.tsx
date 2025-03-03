@@ -1029,26 +1029,40 @@ export default function AdminDashboard() {
               </DialogDescription>
             </DialogHeader>
 
-            {isLoadingHistory ? (
-              <div className="text-center py-8">Loading history...</div>
-            ) : memberHistory && memberHistory.length > 0 ? (
-              <div className="space-y-4 max-h-[400px] overflow-y-auto">
-                {memberHistory.map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className="flex justify-between items-start border-b pb-4"
-                  >
-                    <div>
-                      <p className="font-medium">{transaction.description}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(transaction.timestamp).toLocaleString()}
-                      </p>
-                    </div>
-                    <span className={transaction.points >= 0 ? "text-green-600" : "text-red-600"}>
-                      {transaction.points >= 0 ? "+" : ""}{transaction.points}
-                    </span>
-                  </div>
-                ))}
+            {isLoadingHistory && (
+              <div className="flex justify-center my-8">
+                Loading...
+              </div>
+            )}
+
+            {historyError && (
+              <div className="text-center text-red-500 my-8">
+                Error loading transaction history
+              </div>
+            )}
+
+            {!isLoadingHistory && !historyError && memberHistory.length > 0 ? (
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Points</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {memberHistory.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>{format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}</TableCell>
+                        <TableCell>{transaction.description}</TableCell>
+                        <TableCell className={transaction.points > 0 ? "text-green-600" : "text-red-600"}>
+                          {transaction.points > 0 ? "+" : ""}{transaction.points}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
