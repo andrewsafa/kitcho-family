@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Download, Upload, Settings, CreditCard, Calendar, Gift, Award, Cog, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Download, Upload, Settings, CreditCard, Calendar, Gift, Award, Cog, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -33,16 +33,9 @@ export default function AdminDashboard() {
   const [offerLevel, setOfferLevel] = useState("Bronze");
   const [showBackupSettings, setShowBackupSettings] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState("Bronze");
-  // Add state for deduct points dialog
   const [showDeductPoints, setShowDeductPoints] = useState(false);
   const [customerToDeduct, setCustomerToDeduct] = useState<Customer | null>(null);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Customer | null>(null);
-
-  // New state variables for showing/hiding sections
-  const [showBenefits, setShowBenefits] = useState(false);
-  const [showEvents, setShowEvents] = useState(false);
-  const [showOffers, setShowOffers] = useState(false);
-
 
   // Query hooks
   const { data: customers = [] } = useQuery<Customer[]>({
@@ -147,6 +140,7 @@ export default function AdminDashboard() {
       confirmPassword: ""
     }
   });
+
   // Add form for deducting points
   const deductPointsForm = useForm({
     resolver: zodResolver(z.object({
@@ -186,7 +180,7 @@ export default function AdminDashboard() {
   });
 
   const addEventMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof insertSpecialEventSchema>) => {
+    mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/events", data);
       return res.json();
     },
@@ -216,7 +210,7 @@ export default function AdminDashboard() {
   });
 
   const addOfferMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof insertSpecialOfferSchema>) => {
+    mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/offers", data);
       return res.json();
     },
@@ -313,6 +307,7 @@ export default function AdminDashboard() {
       toast({ variant: "destructive", title: "Error", description: error.message });
     }
   });
+
   // Update the deductPointsMutation to use the correct endpoint and method
   const deductPointsMutation = useMutation({
     mutationFn: async (data: { customerId: number; points: number; reason: string }) => {
@@ -353,7 +348,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Modify handleDeletePoints function
   const handleDeletePoints = (customer: Customer) => {
     setCustomerToDeduct(customer);
     setShowDeductPoints(true);
@@ -432,7 +426,7 @@ export default function AdminDashboard() {
     addPointsMutation.mutate(transactionData);
   };
 
-  const onEventSubmit = (data: z.infer<typeof insertSpecialEventSchema>) => {
+  const onEventSubmit = (data: any) => {
     const eventData = {
       ...data,
       level: eventLevel
@@ -440,7 +434,7 @@ export default function AdminDashboard() {
     addEventMutation.mutate(eventData);
   };
 
-  const onOfferSubmit = (data: z.infer<typeof insertSpecialOfferSchema>) => {
+  const onOfferSubmit = (data: any) => {
     const offerData = {
       ...data,
       level: offerLevel
@@ -702,31 +696,20 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="flex flex-col gap-4">
-                    <Select
-                      value={eventLevel}
-                      onValueChange={setEventLevel}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Bronze">Bronze</SelectItem>
-                        <SelectItem value="Silver">Silver</SelectItem>
-                        <SelectItem value="Gold">Gold</SelectItem>
-                        <SelectItem value="Diamond">Diamond</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Button 
-                      variant="outline" 
-                      className="w-full flex justify-between items-center" 
-                      onClick={() => setShowEvents(!showEvents)}
-                    >
-                      <span>Show/Hide Events for {eventLevel}</span>
-                      {showEvents ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <Select
+                    value={eventLevel}
+                    onValueChange={setEventLevel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Diamond">Diamond</SelectItem>
+                    </SelectContent>
+                  </Select>
 
                   <Form {...eventForm}>
                     <form onSubmit={eventForm.handleSubmit(onEventSubmit)} className="space-y-4">
@@ -813,40 +796,44 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {showEvents && (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Events for {eventLevel}</h3>
-                      {filteredEvents.map((event) => (
-                        <div 
-                          key={event.id} 
-                          className={`flex items-center justify-between p-4 border rounded-lg ${event.active ? 'bg-green-50' : 'bg-gray-50'}`}
-                        >
-                          <div>
-                            <h4 className="font-medium">{event.name}</h4>
-                            <p className="text-sm text-muted-foreground">{event.description}</p>
-                            <p className="text-sm">
-                              {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
-                            </p>
-                            <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
+                  {/* Events Section */}
+                  <Card className="mt-6">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Events for {eventLevel}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {filteredEvents.length > 0 ? (
+                        filteredEvents.map((event) => (
+                          <div 
+                            key={event.id} 
+                            className={`flex items-center justify-between p-4 mb-4 border rounded-lg ${event.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                          >
+                            <div>
+                              <h4 className="font-medium">{event.name}</h4>
+                              <p className="text-sm text-muted-foreground">{event.description}</p>
+                              <p className="text-sm">
+                                {format(new Date(event.startDate), "MMM d, yyyy")} - {format(new Date(event.endDate), "MMM d, yyyy")}
+                              </p>
+                              <p className="text-sm font-medium text-primary">{event.multiplier}x Points</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={event.active ? "text-green-600 font-medium" : "text-gray-400"}>
+                                {event.active ? "Active" : "Inactive"}
+                              </span>
+                              <Switch
+                                checked={event.active}
+                                onCheckedChange={(checked) =>
+                                  updateEventMutation.mutate({ id: event.id, active: checked })
+                                }
+                              />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className={event.active ? "text-green-600 font-medium" : "text-gray-400"}>
-                              {event.active ? "Active" : "Inactive"}
-                            </span>
-                            <Switch
-                              checked={event.active}
-                              onCheckedChange={(checked) =>
-                                updateEventMutation.mutate({ id: event.id, active: checked })
-                              }
-                            />
-                          </div>
-                        </div>
-                      ))}
-                      {filteredEvents.length === 0 && (
-                        <p className="text-muted-foreground text-center py-4">No special events for {eventLevel} level</p>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-center py-4">No events found for {eventLevel} level</p>
                       )}
-                    </div>
-                  )}
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
@@ -860,31 +847,20 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="flex flex-col gap-4">
-                    <Select
-                      value={offerLevel}
-                      onValueChange={setOfferLevel}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Bronze">Bronze</SelectItem>
-                        <SelectItem value="Silver">Silver</SelectItem>
-                        <SelectItem value="Gold">Gold</SelectItem>
-                        <SelectItem value="Diamond">Diamond</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Button 
-                      variant="outline" 
-                      className="w-full flex justify-between items-center" 
-                      onClick={() => setShowOffers(!showOffers)}
-                    >
-                      <span>Show/Hide Offers for {offerLevel}</span>
-                      {showOffers ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <Select
+                    value={offerLevel}
+                    onValueChange={setOfferLevel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Diamond">Diamond</SelectItem>
+                    </SelectContent>
+                  </Select>
 
                   <Form {...offerForm}>
                     <form onSubmit={offerForm.handleSubmit(onOfferSubmit)} className="space-y-4">
@@ -936,39 +912,43 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {showOffers && (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Offers for {offerLevel}</h3>
-                      {filteredOffers.map((offer) => (
-                        <div 
-                          key={offer.id} 
-                          className={`flex items-center justify-between p-4 border rounded-lg ${offer.active ? 'bg-green-50' : 'bg-gray-50'}`}
-                        >
-                          <div>
-                            <h4 className="font-medium">{offer.title}</h4>
-                            <p className="text-sm text-muted-foreground">{offer.description}</p>
-                            <p className="text-sm">
-                              Valid until: {format(new Date(offer.validUntil), "MMM d, yyyy")}
-                            </p>
+                  {/* Offers Section */}
+                  <Card className="mt-6">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Offers for {offerLevel}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {filteredOffers.length > 0 ? (
+                        filteredOffers.map((offer) => (
+                          <div 
+                            key={offer.id} 
+                            className={`flex items-center justify-between p-4 mb-4 border rounded-lg ${offer.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                          >
+                            <div>
+                              <h4 className="font-medium">{offer.title}</h4>
+                              <p className="text-sm text-muted-foreground">{offer.description}</p>
+                              <p className="text-sm">
+                                Valid until: {format(new Date(offer.validUntil), "MMM d, yyyy")}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={offer.active ? "text-green-600 font-medium" : "text-gray-400"}>
+                                {offer.active ? "Active" : "Inactive"}
+                              </span>
+                              <Switch
+                                checked={offer.active}
+                                onCheckedChange={(checked) =>
+                                  updateOfferMutation.mutate({ id: offer.id, active: checked })
+                                }
+                              />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className={offer.active ? "text-green-600 font-medium" : "text-gray-400"}>
-                              {offer.active ? "Active" : "Inactive"}
-                            </span>
-                            <Switch
-                              checked={offer.active}
-                              onCheckedChange={(checked) =>
-                                updateOfferMutation.mutate({ id: offer.id, active: checked })
-                              }
-                            />
-                          </div>
-                        </div>
-                      ))}
-                      {filteredOffers.length === 0 && (
-                        <p className="text-muted-foreground text-center py-4">No special offers for {offerLevel} level</p>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-center py-4">No offers found for {offerLevel} level</p>
                       )}
-                    </div>
-                  )}
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
@@ -982,31 +962,20 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="flex flex-col gap-4">
-                    <Select
-                      value={selectedLevel}
-                      onValueChange={setSelectedLevel}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Bronze">Bronze</SelectItem>
-                        <SelectItem value="Silver">Silver</SelectItem>
-                        <SelectItem value="Gold">Gold</SelectItem>
-                        <SelectItem value="Diamond">Diamond</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Button 
-                      variant="outline" 
-                      className="w-full flex justify-between items-center" 
-                      onClick={() => setShowBenefits(!showBenefits)}
-                    >
-                      <span>Show/Hide Benefits for {selectedLevel}</span>
-                      {showBenefits ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <Select
+                    value={selectedLevel}
+                    onValueChange={setSelectedLevel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Diamond">Diamond</SelectItem>
+                    </SelectContent>
+                  </Select>
 
                   <Form {...benefitForm}>
                     <form onSubmit={benefitForm.handleSubmit(onBenefitSubmit)} className="space-y-4">
@@ -1023,60 +992,61 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
-                      <Button
-                        type="submit"
-                        disabled={addBenefitMutation.isPending}
-                      >
+                      <Button type="submit" disabled={addBenefitMutation.isPending}>
                         Add Benefit
                       </Button>
                     </form>
                   </Form>
 
-                  {showBenefits && (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Benefits for {selectedLevel}</h3>
-                      {filteredBenefits.map((benefit) => (
-                        <div 
-                          key={benefit.id} 
-                          className={`flex items-center justify-between p-4 border rounded-lg ${benefit.active ? 'bg-green-50' : 'bg-gray-50'}`}
-                        >
-                          <div>
-                            <h4 className="font-medium">{benefit.benefit}</h4>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (window.confirm("Are you sure you want to delete this benefit?")) {
-                                  deleteBenefitMutation.mutate(benefit.id);
-                                }
-                              }}
-                            >
-                              Delete
-                            </Button>
-                            <div className="flex items-center space-x-2">
-                              <span className={benefit.active ? "text-green-600 font-medium" : "text-gray-400"}>
-                                {benefit.active ? "Active" : "Inactive"}
-                              </span>
-                              <Switch
-                                checked={benefit.active}
-                                onCheckedChange={(checked) =>
-                                  updateBenefitMutation.mutate({
-                                    id: benefit.id,
-                                    active: checked
-                                  })
-                                }
-                              />
+                  {/* Benefits Section */}
+                  <Card className="mt-6">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Benefits for {selectedLevel}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {filteredBenefits.length > 0 ? (
+                        filteredBenefits.map((benefit) => (
+                          <div 
+                            key={benefit.id} 
+                            className={`flex items-center justify-between p-4 mb-4 border rounded-lg ${benefit.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                          >
+                            <div>
+                              <h4 className="font-medium">{benefit.benefit}</h4>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (window.confirm("Are you sure you want to delete this benefit?")) {
+                                    deleteBenefitMutation.mutate(benefit.id);
+                                  }
+                                }}
+                              >
+                                Delete
+                              </Button>
+                              <div className="flex items-center gap-2">
+                                <span className={benefit.active ? "text-green-600 font-medium" : "text-gray-400"}>
+                                  {benefit.active ? "Active" : "Inactive"}
+                                </span>
+                                <Switch
+                                  checked={benefit.active}
+                                  onCheckedChange={(checked) =>
+                                    updateBenefitMutation.mutate({
+                                      id: benefit.id,
+                                      active: checked
+                                    })
+                                  }
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                      {filteredBenefits.length === 0 && (
-                        <p className="text-muted-foreground text-center py-4">No benefits for {selectedLevel} level</p>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground text-center py-4">No benefits found for {selectedLevel} level</p>
                       )}
-                    </div>
-                  )}
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
@@ -1086,7 +1056,7 @@ export default function AdminDashboard() {
           <TabsContent value="settings">
             <Card>
               <CardHeader>
-                <CardTitle>Settings</CardTitle>
+                <CardTitle>Admin Settings</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -1222,59 +1192,34 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Backup History</h3>
-              <div className="max-h-40 overflow-y-auto">
-                <div className="space-y-2">
-                  {backupHistory.map((backup, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm p-2 border rounded">
-                      <span>{new Date(backup.timestamp).toLocaleString()}</span>
-                      <span className={backup.success ? "text-green-600" : "text-red-600"}>
-                        {backup.success ? "Success" : "Failed"}
-                      </span>
-                    </div>
-                  ))}
-                  {backupHistory.length === 0 && (
-                    <p className="text-center text-muted-foreground">No backups yet</p>
-                  )}
-                </div>
-              </div>
-            </div>
             <DialogFooter>
-              <Button onClick={() => setShowBackupSettings(false)}>Close</Button>
+              <Button onClick={() => setShowBackupSettings(false)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Add the deduct points dialog in the JSX, after the backup dialog */}
+        {/* Deduct Points Dialog */}
         <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Deduct Points</DialogTitle>
               <DialogDescription>
-                {customerToDeduct ? (
-                  <>
-                    Deduct points from {customerToDeduct.name}
-                    <br />
-                    Current Points: {customerToDeduct.points}
-                  </>
-                ) : (
-                  "Select a customer to deduct points"
-                )}
+                Deduct points from {customerToDeduct?.name} ({customerToDeduct?.mobile})
               </DialogDescription>
             </DialogHeader>
 
             <Form {...deductPointsForm}>
-              <form 
+              <form
                 onSubmit={deductPointsForm.handleSubmit((data) => {
                   if (customerToDeduct) {
                     deductPointsMutation.mutate({
-                      customerId: customerToDeduct.id,
-                      points: data.points,
+                      customerId: customerToDeduct.id, points: data.points,
                       reason: data.reason
                     });
                   }
-                })} 
+                })}
                 className="space-y-4"
               >
                 <FormField
@@ -1286,16 +1231,20 @@ export default function AdminDashboard() {
                       <FormControl>
                         <Input
                           type="number"
+                          min="1"
+                          max={customerToDeduct?.points}
                           {...field}
                           onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                          min={1}
-                          max={customerToDeduct?.points}
                         />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Current points: {customerToDeduct?.points || 0}
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={deductPointsForm.control}
                   name="reason"
@@ -1303,17 +1252,24 @@ export default function AdminDashboard() {
                     <FormItem>
                       <FormLabel>Reason</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Reason for deducting points" />
+                        <Input
+                          placeholder="Reason for deducting points"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowDeductPoints(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeductPoints(false)}
+                    type="button"
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={deductPointsMutation.isPending || !customerToDeduct}>
+                  <Button type="submit" disabled={deductPointsMutation.isPending}>
                     Deduct Points
                   </Button>
                 </DialogFooter>
@@ -1322,15 +1278,13 @@ export default function AdminDashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* Add Member History Dialog after other dialogs */}
+        {/* Member History Dialog */}
         <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>
-                Transaction History for {selectedMemberHistory?.name}
-              </DialogTitle>
+              <DialogTitle>Points Transaction History</DialogTitle>
               <DialogDescription>
-                Mobile: {selectedMemberHistory?.mobile} | Current Points: {selectedMemberHistory?.points}
+                Viewing history for {selectedMemberHistory?.name} ({selectedMemberHistory?.mobile})
               </DialogDescription>
             </DialogHeader>
 
