@@ -308,7 +308,6 @@ export default function AdminDashboard() {
     }
   });
 
-  // Update the deductPointsMutation to use the correct endpoint and method
   const deductPointsMutation = useMutation({
     mutationFn: async (data: { customerId: number; points: number; reason: string }) => {
       const res = await apiRequest("POST", "/api/points", {
@@ -796,17 +795,14 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Events Section */}
-                  <Card className="mt-6">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Events for {eventLevel}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {filteredEvents.length > 0 ? (
-                        filteredEvents.map((event) => (
+                  <div className="border rounded-lg p-5 mt-6">
+                    <h3 className="text-lg font-medium mb-4">Events for {eventLevel}</h3>
+                    {filteredEvents.length > 0 ? (
+                      <div className="space-y-4">
+                        {filteredEvents.map((event) => (
                           <div 
                             key={event.id} 
-                            className={`flex items-center justify-between p-4 mb-4 border rounded-lg ${event.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                            className={`flex items-center justify-between p-4 border rounded-lg ${event.active ? 'bg-green-50' : 'bg-gray-50'}`}
                           >
                             <div>
                               <h4 className="font-medium">{event.name}</h4>
@@ -828,12 +824,12 @@ export default function AdminDashboard() {
                               />
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground text-center py-4">No events found for {eventLevel} level</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-4">No events found for {eventLevel} level</p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -912,17 +908,14 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Offers Section */}
-                  <Card className="mt-6">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Offers for {offerLevel}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {filteredOffers.length > 0 ? (
-                        filteredOffers.map((offer) => (
+                  <div className="border rounded-lg p-5 mt-6">
+                    <h3 className="text-lg font-medium mb-4">Offers for {offerLevel}</h3>
+                    {filteredOffers.length > 0 ? (
+                      <div className="space-y-4">
+                        {filteredOffers.map((offer) => (
                           <div 
                             key={offer.id} 
-                            className={`flex items-center justify-between p-4 mb-4 border rounded-lg ${offer.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                            className={`flex items-center justify-between p-4 border rounded-lg ${offer.active ? 'bg-green-50' : 'bg-gray-50'}`}
                           >
                             <div>
                               <h4 className="font-medium">{offer.title}</h4>
@@ -943,12 +936,12 @@ export default function AdminDashboard() {
                               />
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground text-center py-4">No offers found for {offerLevel} level</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-4">No offers found for {offerLevel} level</p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -958,7 +951,7 @@ export default function AdminDashboard() {
           <TabsContent value="benefits">
             <Card>
               <CardHeader>
-                <CardTitle>Level Benefits</CardTitle>
+<CardTitle>Level Benefits</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -998,17 +991,14 @@ export default function AdminDashboard() {
                     </form>
                   </Form>
 
-                  {/* Benefits Section */}
-                  <Card className="mt-6">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Benefits for {selectedLevel}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {filteredBenefits.length > 0 ? (
-                        filteredBenefits.map((benefit) => (
+                  <div className="border rounded-lg p-5 mt-6">
+                    <h3 className="text-lg font-medium mb-4">Benefits for {selectedLevel}</h3>
+                    {filteredBenefits.length > 0 ? (
+                      <div className="space-y-4">
+                        {filteredBenefits.map((benefit) => (
                           <div 
                             key={benefit.id} 
-                            className={`flex items-center justify-between p-4 mb-4 border rounded-lg ${benefit.active ? 'bg-green-50' : 'bg-gray-50'}`}
+                            className={`flex items-center justify-between p-4 border rounded-lg ${benefit.active ? 'bg-green-50' : 'bg-gray-50'}`}
                           >
                             <div>
                               <h4 className="font-medium">{benefit.benefit}</h4>
@@ -1041,12 +1031,12 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground text-center py-4">No benefits found for {selectedLevel} level</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-4">No benefits found for {selectedLevel} level</p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
