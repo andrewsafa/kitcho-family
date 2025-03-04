@@ -673,6 +673,7 @@ export default function AdminDashboard() {
                           <TableHead>Mobile</TableHead>
                           <TableHead>Level</TableHead>
                           <TableHead>Points</TableHead>
+                          <TableHead>Verification Code</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -683,6 +684,11 @@ export default function AdminDashboard() {
                             <TableCell>{customer.mobile}</TableCell>
                             <TableCell>{customer.level}</TableCell>
                             <TableCell>{customer.points}</TableCell>
+                            <TableCell>
+                              <span className="font-mono text-sm font-medium bg-primary/10 text-primary px-2 py-1 rounded">
+                                {customer.verificationCode || "—"}
+                              </span>
+                            </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
                                 <Button
