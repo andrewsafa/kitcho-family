@@ -188,9 +188,11 @@ export async function registerRoutes(app: Express) {
 
       console.log("Processing image, output path:", outputPath);
 
+      // Ensure input and output paths are DIFFERENT
       await sharp(req.file.path)
         .resize(100, 100) // Small size for benefits
-        .toFile(outputPath);
+        .toBuffer()
+        .then(data => fs.writeFile(outputPath, data));
 
       console.log("Image processed successfully");
 
@@ -333,9 +335,11 @@ export async function registerRoutes(app: Express) {
 
       console.log("Processing image, output path:", outputPath);
 
+      // Ensure input and output paths are DIFFERENT
       await sharp(req.file.path)
         .resize(300, 200) // Medium size for offers
-        .toFile(outputPath);
+        .toBuffer()
+        .then(data => fs.writeFile(outputPath, data));
 
       console.log("Image processed successfully");
 
