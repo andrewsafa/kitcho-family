@@ -12,6 +12,7 @@ import fs from "fs/promises";
 // Add regular fs for createReadStream and directory operations
 import * as fsSync from "fs";
 import express from "express";
+import { ZodError } from "zod";
 
 // Create all necessary directories with proper error handling
 async function ensureDirectoriesExist() {
@@ -57,7 +58,7 @@ const multerStorage = multer.diskStorage({
       try {
         fsSync.mkdirSync(uploadPath, { recursive: true });
         console.log(`Created directory: ${uploadPath}`);
-      } catch (err) {
+      } catch (err: any) {
         console.error(`Error creating ${uploadPath}:`, err);
         return cb(new Error(`Cannot create upload directory: ${err.message}`), "");
       }
@@ -81,7 +82,8 @@ const upload = multer({
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'), false);
+      cb(null as any, false);
+      return cb(new Error('Only image files are allowed'));
     }
   }
 });
@@ -206,10 +208,10 @@ export async function registerRoutes(app: Express) {
       const customer = await storage.createCustomer(customerData);
       res.status(201).json(customer);
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ZodError) {
         res.status(400).json({ message: fromZodError(error).message });
       } else {
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: error instanceof Error ? error.message : "Internal server error" });
       }
     }
   });
@@ -275,7 +277,7 @@ export async function registerRoutes(app: Express) {
       const benefit = await storage.addLevelBenefit(benefitData);
       res.status(201).json(benefit);
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ZodError) {
         res.status(400).json({ message: fromZodError(error).message });
       } else {
         res.status(500).json({ message: "Internal server error" });
@@ -376,7 +378,7 @@ export async function registerRoutes(app: Express) {
       const customer = await storage.addPoints(transactionData);
       res.json(customer);
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ZodError) {
         res.status(400).json({ message: fromZodError(error).message });
       } else {
         res.status(500).json({ message: "Internal server error" });
@@ -427,7 +429,7 @@ export async function registerRoutes(app: Express) {
       const offer = await storage.createSpecialOffer(offerData);
       res.status(201).json(offer);
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof ZodError) {
         res.status(400).json({ message: fromZodError(error).message });
       } else {
         res.status(500).json({ message: "Internal server error" });
