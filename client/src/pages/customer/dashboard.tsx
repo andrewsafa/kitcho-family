@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
-import { type Customer } from "@shared/schema";
+import { type Customer, type LoyaltyLevel } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoyaltyCard } from "@/components/loyalty-card";
@@ -39,11 +39,11 @@ export default function CustomerDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
       <div className="max-w-4xl mx-auto space-y-6">
-        <Announcements customerLevel={customer.level} />
+        <Announcements customerLevel={customer.level as LoyaltyLevel} />
         <LoyaltyCard customer={customer} />
         <div className="grid md:grid-cols-2 gap-6">
           <PointsHistory customerId={customer.id} />
-          <LevelBenefits currentLevel={customer.level} />
+          <LevelBenefits currentLevel={customer.level as LoyaltyLevel} />
         </div>
       </div>
     </div>
