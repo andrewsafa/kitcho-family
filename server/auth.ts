@@ -12,6 +12,7 @@ const scryptAsync = promisify(scrypt);
 declare module "express-session" {
   interface SessionData {
     adminId?: number;
+    partnerId?: number;
   }
 }
 
@@ -31,9 +32,7 @@ export async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: express.Express) {
   app.use(
     session({
-      store: new MemoryStore({
-        checkPeriod: 86400000, // prune expired entries every 24h
-      }),
+      store: storage.sessionStore,
       secret: "kitcho-family-secret",
       resave: false,
       saveUninitialized: false,

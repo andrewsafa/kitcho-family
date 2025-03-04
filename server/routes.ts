@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema } from "@shared/schema";
+import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema, insertPartnerSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth, requireAdmin, hashPassword, comparePasswords } from "./auth";
 import { backupScheduler } from "./backup-scheduler";
@@ -87,6 +87,14 @@ const upload = multer({
     }
   }
 });
+
+// Middleware to check if a partner is authenticated
+function requirePartner(req: any, res: any, next: any) {
+  if (!req.session.partnerId) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+  next();
+}
 
 export async function registerRoutes(app: Express) {
   // Set up authentication
@@ -539,6 +547,194 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Partner Management Routes for Admins
+  app.get("/api/admin/partners", requireAdmin, async (_req, res) => {
+    try {
+      const partners = await storage.listPartners();
+      res.json(partners);
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to list partners",
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.post("/api/admin/partners", requireAdmin, async (req, res) => {
+    try {
+      const partnerData = insertPartnerSchema.parse(req.body);
+
+      // Check if username already exists
+      const existing = await storage.getPartnerByUsername(partnerData.username);
+      if (existing) {
+        return res.status(409).json({ message: "Username already taken" });
+      }
+
+      const partner = await storage.createPartner(partnerData);
+      res.status(201).json(partner);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: fromZodError(error).message });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to create partner",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+  });
+
+  app.post("/api/admin/partners/:id/reset-password", requireAdmin, async (req, res) => {
+    try {
+      const partnerId = parseInt(req.params.id);
+      const { newPassword = "partner123" } = req.body; // Default password if not provided
+
+      const partner = await storage.updatePartnerPassword(partnerId, newPassword);
+      res.status(200).json({
+        message: "Partner password reset successfully",
+        partnerId: partner.id,
+        username: partner.username
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to reset partner password",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.patch("/api/admin/partners/:id/status", requireAdmin, async (req, res) => {
+    try {
+      const partnerId = parseInt(req.params.id);
+      const { active } = req.body;
+
+      if (typeof active !== 'boolean') {
+        return res.status(400).json({ message: "Active status must be a boolean" });
+      }
+
+      const partner = await storage.updatePartnerStatus(partnerId, active);
+      res.json(partner);
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to update partner status",
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+
+  app.delete("/api/admin/partners/:id", requireAdmin, async (req, res) => {
+    try {
+      const partnerId = parseInt(req.params.id);
+      await storage.deletePartner(partnerId);
+      res.json({ message: "Partner deleted successfully" });
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to delete partner",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Partner Authentication Routes
+  app.post("/api/partner/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+
+      const partner = await storage.getPartnerByUsername(username);
+      if (!partner) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const passwordValid = await comparePasswords(password, partner.password);
+      if (!passwordValid) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      if (!partner.active) {
+        return res.status(403).json({ message: "Account is inactive. Please contact administrator." });
+      }
+
+      // Set session
+      req.session.partnerId = partner.id;
+
+      res.json({
+        id: partner.id,
+        username: partner.username,
+        name: partner.name
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Login failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.get("/api/partner/me", requirePartner, async (req, res) => {
+    try {
+      const partner = await storage.getPartner(req.session.partnerId);
+      if (!partner) {
+        return res.status(404).json({ message: "Partner not found" });
+      }
+
+      res.json({
+        id: partner.id,
+        username: partner.username,
+        name: partner.name
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to retrieve partner information",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.post("/api/partner/logout", requirePartner, async (req, res) => {
+    try {
+      delete req.session.partnerId;
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      res.status(500).json({
+        message: "Logout failed",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Update the partner verification endpoint
+  app.get("/api/partner/verify/:mobile", async (req, res) => {
+    try {
+      const mobile = req.params.mobile;
+      const customer = await storage.getCustomerByMobile(mobile);
+
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+
+      // Return only the necessary information for verification
+      // Now includes the verification code
+      res.json({
+        id: customer.id,
+        name: customer.name,
+        mobile: customer.mobile,
+        level: customer.level,
+        points: customer.points,
+        verificationCode: customer.verificationCode
+      });
+    } catch (error) {
+      console.error("Partner verification error:", error);
+      res.status(500).json({ 
+        message: "Failed to verify customer",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Backup endpoint
   app.get("/api/backup", requireAdmin, async (_req, res) => {
     try {
@@ -709,35 +905,6 @@ export async function registerRoutes(app: Express) {
     } catch (error) {
       console.error('Backup download error:', error);
       res.status(500).json({ message: `Failed to download backup file: ${error instanceof Error ? error.message : String(error)}` });
-    }
-  });
-
-  // Update the partner verification endpoint
-  app.get("/api/partner/verify/:mobile", async (req, res) => {
-    try {
-      const mobile = req.params.mobile;
-      const customer = await storage.getCustomerByMobile(mobile);
-
-      if (!customer) {
-        return res.status(404).json({ message: "Customer not found" });
-      }
-
-      // Return only the necessary information for verification
-      // Now includes the verification code
-      res.json({
-        id: customer.id,
-        name: customer.name,
-        mobile: customer.mobile,
-        level: customer.level,
-        points: customer.points,
-        verificationCode: customer.verificationCode
-      });
-    } catch (error) {
-      console.error("Partner verification error:", error);
-      res.status(500).json({ 
-        message: "Failed to verify customer",
-        error: error instanceof Error ? error.message : String(error)
-      });
     }
   });
 

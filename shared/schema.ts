@@ -8,6 +8,15 @@ export const admins = pgTable("admins", {
   password: text("password").notNull(),
 });
 
+export const partners = pgTable("partners", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  name: text("name").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -77,6 +86,16 @@ export const insertAdminSchema = createInsertSchema(admins).pick({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+export const insertPartnerSchema = createInsertSchema(partners).pick({
+  username: true,
+  password: true,
+  name: true,
+}).extend({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+});
+
 export const insertCustomerSchema = createInsertSchema(customers).pick({
   name: true,
   mobile: true,
@@ -143,6 +162,8 @@ export const insertStoreSubmissionSchema = createInsertSchema(storeSubmissions).
 
 export type Admin = typeof admins.$inferSelect;
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
+export type Partner = typeof partners.$inferSelect;
+export type InsertPartner = z.infer<typeof insertPartnerSchema>;
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type PointTransaction = typeof pointTransactions.$inferSelect;

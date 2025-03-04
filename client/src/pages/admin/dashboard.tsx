@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialOffer, type PointTransaction, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema } from "@shared/schema";
+import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialOffer, type PointTransaction, type Partner, type InsertPartner, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema, insertPartnerSchema } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Download, Upload, Settings, CreditCard, Gift, Award, Cog, Users, Key } from "lucide-react";
+import { Search, Download, Upload, Settings, CreditCard, Gift, Award, Cog, Users, Key, Briefcase } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -34,6 +34,7 @@ export default function AdminDashboard() {
   const [showDeductPoints, setShowDeductPoints] = useState(false);
   const [customerToDeduct, setCustomerToDeduct] = useState<Customer | null>(null);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Customer | null>(null);
+  const [partnerSearchTerm, setPartnerSearchTerm] = useState("");
 
   // Query hooks for common data
   const { data: customers = [] } = useQuery<Customer[]>({
@@ -46,6 +47,11 @@ export default function AdminDashboard() {
 
   const { data: backupHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/backup/history"],
+  });
+
+  // Partners data query
+  const { data: partners = [], isLoading: isLoadingPartners } = useQuery<Partner[]>({
+    queryKey: ["/api/admin/partners"],
   });
 
   // Level-specific queries
@@ -145,6 +151,16 @@ export default function AdminDashboard() {
       currentPassword: "",
       newPassword: "",
       confirmPassword: ""
+    }
+  });
+
+  // Add form for partners
+  const partnerForm = useForm({
+    resolver: zodResolver(insertPartnerSchema),
+    defaultValues: {
+      username: "",
+      name: "",
+      password: "partner123" // Default password
     }
   });
 
@@ -290,6 +306,84 @@ export default function AdminDashboard() {
     }
   });
 
+  // Partner mutations
+  const createPartnerMutation = useMutation({
+    mutationFn: async (data: InsertPartner) => {
+      const res = await apiRequest("POST", "/api/admin/partners", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Partner created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
+      partnerForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error creating partner",
+        description: error.message
+      });
+    }
+  });
+
+  const resetPartnerPasswordMutation = useMutation({
+    mutationFn: async (partnerId: number) => {
+      const res = await apiRequest("POST", `/api/admin/partners/${partnerId}/reset-password`, {
+        newPassword: "partner123" // Default password for reset
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Partner password reset successfully",
+        description: "Password has been reset to 'partner123'"
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive", 
+        title: "Error resetting partner password",
+        description: error.message
+      });
+    }
+  });
+
+  const updatePartnerStatusMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: number, active: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/admin/partners/${id}/status`, { active });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
+      toast({ title: "Partner status updated" });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error updating partner status",
+        description: error.message
+      });
+    }
+  });
+
+  const deletePartnerMutation = useMutation({
+    mutationFn: async (partnerId: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/partners/${partnerId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
+      toast({ title: "Partner deleted successfully" });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error deleting partner",
+        description: error.message
+      });
+    }
+  });
+
   const updateBackupConfigMutation = useMutation({
     mutationFn: async (config: any) => {
       const res = await apiRequest("POST", "/api/backup/config", config);
@@ -404,6 +498,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleResetPartnerPassword = (partner: Partner) => {
+    if (window.confirm(`Reset password for partner ${partner.name} to 'partner123'?`)) {
+      resetPartnerPasswordMutation.mutate(partner.id);
+    }
+  };
+
+  const handleDeletePartner = (partner: Partner) => {
+    if (window.confirm(`Are you sure you want to delete partner ${partner.name}?`)) {
+      deletePartnerMutation.mutate(partner.id);
+    }
+  };
+
   const handleDeletePoints = (customer: Customer) => {
     setCustomerToDeduct(customer);
     setShowDeductPoints(true);
@@ -460,6 +566,10 @@ export default function AdminDashboard() {
     changePasswordMutation.mutate(data);
   };
 
+  const onPartnerSubmit = (data: InsertPartner) => {
+    createPartnerMutation.mutate(data);
+  };
+
   // Event handlers
   const handleSearch = async (mobile: string) => {
     if (!mobile) {
@@ -499,6 +609,11 @@ export default function AdminDashboard() {
     customer.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
     customer.mobile.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
     customer.level.toLowerCase().includes(memberSearchTerm.toLowerCase())
+  );
+
+  const filteredPartners = partners.filter(partner =>
+    partner.name.toLowerCase().includes(partnerSearchTerm.toLowerCase()) ||
+    partner.username.toLowerCase().includes(partnerSearchTerm.toLowerCase())
   );
 
   // Get level-specific data
@@ -557,7 +672,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="points" className="space-y-6">
-          <TabsList className="grid grid-cols-5 gap-4 h-auto p-1">
+          <TabsList className="grid grid-cols-6 gap-4 h-auto p-1">
             <TabsTrigger value="points" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Points
@@ -565,6 +680,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Members
+            </TabsTrigger>
+            <TabsTrigger value="partners" className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Partners
             </TabsTrigger>
             <TabsTrigger value="offers" className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
@@ -756,6 +875,159 @@ export default function AdminDashboard() {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Partners Tab */}
+          <TabsContent value="partners">
+            <Card>
+              <CardHeader>
+                <CardTitle>Partner Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <Form {...partnerForm}>
+                    <form onSubmit={partnerForm.handleSubmit(onPartnerSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={partnerForm.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter partner username" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={partnerForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter partner name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={partnerForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="password" 
+                                  placeholder="Enter partner password" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        disabled={createPartnerMutation.isPending}
+                        className="mt-2"
+                      >
+                        Create Partner
+                      </Button>
+                    </form>
+                  </Form>
+
+                  <div className="mt-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">Partner Accounts</h3>
+                      <Input
+                        placeholder="Search partners..."
+                        value={partnerSearchTerm}
+                        onChange={(e) => setPartnerSearchTerm(e.target.value)}
+                        className="max-w-xs"
+                      />
+                    </div>
+
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Username</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {isLoadingPartners ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-4">
+                                Loading partner accounts...
+                              </TableCell>
+                            </TableRow>
+                          ) : filteredPartners.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                                No partner accounts found
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredPartners.map((partner) => (
+                              <TableRow key={partner.id}>
+                                <TableCell className="font-medium">{partner.username}</TableCell>
+                                <TableCell>{partner.name}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Switch
+                                      checked={partner.active}
+                                      onCheckedChange={(checked) => {
+                                        updatePartnerStatusMutation.mutate({
+                                          id: partner.id,
+                                          active: checked
+                                        });
+                                      }}
+                                    />
+                                    <span>{partner.active ? "Active" : "Inactive"}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {partner.createdAt ? format(new Date(partner.createdAt), 'MMM d, yyyy') : '—'}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleResetPartnerPassword(partner)}
+                                    >
+                                      <Key className="h-3 w-3 mr-1" />
+                                      Reset Password
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDeletePartner(partner)}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -1064,104 +1336,71 @@ export default function AdminDashboard() {
                               }}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Select Frequency" />
+                                <SelectValue placeholder="Select frequency" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="0 0 * * *">Daily at midnight</SelectItem>
-                                <SelectItem value="0 0 * * 0">Weekly on Sunday</SelectItem>
-                                <SelectItem value="0 0 1 * *">Monthly on the 1st</SelectItem>
+                                <SelectItem value="0 0 * * *">Daily (Midnight)</SelectItem>
+                                <SelectItem value="0 0 * * 0">Weekly (Sunday)</SelectItem>
+                                <SelectItem value="0 0 1 * *">Monthly (1st day)</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-1">Max Backups to Keep</label>
-                            <Select
-                              value={backupConfig.maxBackups.toString()}
-                              onValueChange={(value) => {
+                            <Input
+                              type="number"
+                              value={backupConfig.maxBackups}
+                              onChange={(e) => {
                                 updateBackupConfigMutation.mutate({
                                   ...backupConfig,
-                                  maxBackups: parseInt(value)
+                                  maxBackups: parseInt(e.target.value)
                                 });
                               }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Max Backups" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="3">3 backups</SelectItem>
-                                <SelectItem value="7">7 backups</SelectItem>
-                                <SelectItem value="14">14 backups</SelectItem>
-                                <SelectItem value="30">30 backups</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={backupConfig.enabled}
-                              onCheckedChange={(checked) => {
-                                updateBackupConfigMutation.mutate({
-                                  ...backupConfig,
-                                  enabled: !!checked
-                                });
-                              }}
+                              min={1}
+                              max={30}
                             />
-                            <span>Enable Automated Backups</span>
-                          </label>
+                          </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Backup history */}
-                    <div className="mt-6">
-                      <h4 className="text-md font-medium mb-3">Backup History</h4>
+                    <div className="mt-4">
+                      <h3 className="text-lg font-medium mb-2">Backup History</h3>
                       <div className="rounded-md border">
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead>Date</TableHead>
-                              <TableHead>File</TableHead>
                               <TableHead>Status</TableHead>
-                              <TableHead>Actions</TableHead>
+                              <TableHead>Action</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {backupHistory.map((backup, index) => (
-                              <TableRow key={index}>
-                                <TableCell>
-                                  {new Date(backup.timestamp).toLocaleString()}
-                                </TableCell>
-                                <TableCell>{backup.filename}</TableCell>
-                                <TableCell>
-                                  {backup.success ? (
-                                    <span className="text-green-600">Success</span>
-                                  ) : (
-                                    <span className="text-red-600">Failed</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {backup.success && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        window.location.href = `/api/backup/download/${backup.filename}`;
-                                      }}
-                                    >
-                                      Download
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                            {backupHistory.length === 0 && (
+                            {backupHistory.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={4} className="text-center py-4">
-                                  No backup history found
+                                <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                                  No backup history available
                                 </TableCell>
                               </TableRow>
+                            ) : (
+                              backupHistory.map((backup, index) => (
+                                <TableRow key={index}>
+                                  <TableCell>{format(new Date(backup.timestamp), "MMM d, yyyy h:mm a")}</TableCell>
+                                  <TableCell>{backup.success !== false ? "Success" : "Failed"}</TableCell>
+                                  <TableCell>
+                                    {backup.filename && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => window.open(`/api/backup/download/${backup.filename}`, '_blank')}
+                                      >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Download
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))
                             )}
                           </TableBody>
                         </Table>
@@ -1173,28 +1412,17 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
 
-      {/* Point Transaction History Dialog */}
-      <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Transaction History - {selectedMemberHistory?.name}</DialogTitle>
-            <DialogDescription>
-              View all point transactions for this customer
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-96 overflow-y-auto">
-            {isLoadingHistory ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : memberHistory.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No transaction history found
-              </div>
-            ) : (
+        {/* Member History Dialog */}
+        <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Point Transaction History</DialogTitle>
+              <DialogDescription>
+                {selectedMemberHistory?.name} ({selectedMemberHistory?.mobile})
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1204,106 +1432,119 @@ export default function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {memberHistory.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>{new Date(transaction.timestamp).toLocaleString()}</TableCell>
-                      <TableCell className={transaction.points > 0 ? "text-green-600" : "text-red-600"}>
-                        {transaction.points > 0 ? `+${transaction.points}` : transaction.points}
+                  {isLoadingHistory ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4">
+                        Loading transaction history...
                       </TableCell>
-                      <TableCell>{transaction.description}</TableCell>
                     </TableRow>
-                  ))}
+                  ) : historyError ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4 text-destructive">
+                        Error loading history: {historyError.message}
+                      </TableCell>
+                    </TableRow>
+                  ) : memberHistory.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                        No transaction history available
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    memberHistory.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>
+                          {transaction.timestamp ? format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a") : "—"}
+                        </TableCell>
+                        <TableCell className={transaction.points >= 0 ? "text-green-600" : "text-red-600"}>
+                          {transaction.points >= 0 ? "+" : ""}{transaction.points}
+                        </TableCell>
+                        <TableCell>{transaction.description}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedMemberHistory(null)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedMemberHistory(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Deduct Points Dialog */}
-      <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Deduct Points - {customerToDeduct?.name}</DialogTitle>
-            <DialogDescription>
-              Remove points from this customer's account
-            </DialogDescription>
-          </DialogHeader>
-
-          <Form {...deductPointsForm}>
-            <form
-              onSubmit={deductPointsForm.handleSubmit((data) => {
-                if (!customerToDeduct) return;
-                deductPointsMutation.mutate({
-                  customerId: customerToDeduct.id,
-                  points: data.points,
-                  reason: data.reason
-                });
-              })}
-              className="space-y-4"
-            >
-              <FormField
-                control={deductPointsForm.control}
-                name="points"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Points to Deduct</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        max={customerToDeduct?.points}
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    {customerToDeduct && (
-                      <p className="text-xs text-muted-foreground">
-                        Current points: {customerToDeduct.points}
-                      </p>
+        {/* Deduct Points Dialog */}
+        <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Deduct Points</DialogTitle>
+              <DialogDescription>
+                Deduct points from {customerToDeduct?.name} (Current: {customerToDeduct?.points} points)
+              </DialogDescription>
+            </DialogHeader>
+            {customerToDeduct && (
+              <Form {...deductPointsForm}>
+                <form
+                  onSubmit={deductPointsForm.handleSubmit((data) => {
+                    deductPointsMutation.mutate({
+                      customerId: customerToDeduct.id,
+                      points: data.points,
+                      reason: data.reason
+                    });
+                  })}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={deductPointsForm.control}
+                    name="points"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Points to Deduct</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            {...field}
+                            min={1}
+                            max={customerToDeduct.points}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={deductPointsForm.control}
-                name="reason"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reason</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Reason for deducting points" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowDeductPoints(false)}
-                  type="button"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="destructive"
-                  disabled={deductPointsMutation.isPending}
-                >
-                  Deduct Points
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+                  />
+                  <FormField
+                    control={deductPointsForm.control}
+                    name="reason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reason</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Reason for deducting points" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowDeductPoints(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      disabled={deductPointsMutation.isPending}
+                    >
+                      Deduct Points
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
