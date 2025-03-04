@@ -99,7 +99,20 @@ export async function registerRoutes(app: Express) {
     next();
   });
 
-  app.use('/assets', express.static('public/assets'));
+  // Improved static file serving with proper content types
+  app.use('/assets', express.static('public/assets', {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.png')) {
+        res.setHeader('Content-Type', 'image/png');
+      } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+        res.setHeader('Content-Type', 'image/jpeg');
+      } else if (filePath.endsWith('.gif')) {
+        res.setHeader('Content-Type', 'image/gif');
+      } else if (filePath.endsWith('.webp')) {
+        res.setHeader('Content-Type', 'image/webp');
+      }
+    }
+  }));
 
   // Diagnostic route for testing image serving
   app.get("/api/test-image-paths", async (_req, res) => {
@@ -263,17 +276,22 @@ export async function registerRoutes(app: Express) {
 
       console.log("Processing image, output path:", outputPath);
 
-      // Ensure input and output paths are DIFFERENT
-      await sharp(req.file.path)
+      // Important: Make sure input and output paths are different to avoid errors
+      const buffer = await sharp(req.file.path)
         .resize(100, 100) // Small size for benefits
-        .toBuffer()
-        .then(data => fs.writeFile(outputPath, data));
+        .toBuffer();
+
+      await fs.writeFile(outputPath, buffer);
 
       console.log("Image processed successfully");
 
-      // Remove the original uploaded file
-      await fs.unlink(req.file.path);
-      console.log("Original file removed");
+      // Remove the original uploaded file if it's in a different location
+      if (req.file.path !== outputPath) {
+        await fs.unlink(req.file.path).catch(err => {
+          console.warn("Warning: Could not delete original file:", err);
+        });
+        console.log("Original file removed");
+      }
 
       res.json({ imagePath });
     } catch (error) {
@@ -410,17 +428,22 @@ export async function registerRoutes(app: Express) {
 
       console.log("Processing image, output path:", outputPath);
 
-      // Ensure input and output paths are DIFFERENT
-      await sharp(req.file.path)
+      // Important: Make sure input and output paths are different to avoid errors
+      const buffer = await sharp(req.file.path)
         .resize(300, 200) // Medium size for offers
-        .toBuffer()
-        .then(data => fs.writeFile(outputPath, data));
+        .toBuffer();
+
+      await fs.writeFile(outputPath, buffer);
 
       console.log("Image processed successfully");
 
-      // Remove the original uploaded file
-      await fs.unlink(req.file.path);
-      console.log("Original file removed");
+      // Remove the original uploaded file if it's in a different location
+      if (req.file.path !== outputPath) {
+        await fs.unlink(req.file.path).catch(err => {
+          console.warn("Warning: Could not delete original file:", err);
+        });
+        console.log("Original file removed");
+      }
 
       res.json({ imagePath });
     } catch (error) {
