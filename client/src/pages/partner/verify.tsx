@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Crown, Star, Award, Trophy } from "lucide-react";
+import { Crown, Star, Award, Trophy, LogIn } from "lucide-react";
 import { Customer, LOYALTY_LEVELS } from "@shared/schema";
 
 const LEVEL_ICONS = {
@@ -17,6 +18,7 @@ const LEVEL_ICONS = {
 export default function PartnerVerify() {
   const [mobile, setMobile] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const [, setLocation] = useLocation();
 
   const { data: customer, isLoading, error } = useQuery<Customer>({
     queryKey: [`/api/partner/verify/${mobile}`],
@@ -65,6 +67,16 @@ export default function PartnerVerify() {
               </div>
             </form>
           </CardContent>
+          <CardFooter className="flex justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setLocation("/partner/login")} 
+              className="w-full mt-2"
+            >
+              <LogIn className="h-4 w-4 mr-2" />
+              Partner Login
+            </Button>
+          </CardFooter>
         </Card>
 
         {searchPerformed && (
