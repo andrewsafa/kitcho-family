@@ -21,7 +21,10 @@ import {
   specialOffers,
   type StoreSubmission,
   type InsertStoreSubmission,
-  storeSubmissions
+  storeSubmissions,
+  type Partner,
+  type InsertPartner,
+  partners
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, and, gt, sql } from "drizzle-orm";
@@ -103,6 +106,14 @@ export interface IStorage {
   updateCustomerPassword(id: number, newPassword: string): Promise<Customer>;
   // Method to ensure all customers have passwords
   ensureCustomerPasswords(): Promise<void>;
+  // Partner-related methods
+  getPartner(id: number): Promise<Partner | undefined>;
+  getPartnerByUsername(username: string): Promise<Partner | undefined>;
+  createPartner(partner: InsertPartner): Promise<Partner>;
+  updatePartnerPassword(id: number, newPassword: string): Promise<Partner>;
+  updatePartnerStatus(id: number, active: boolean): Promise<Partner>;
+  listPartners(): Promise<Partner[]>;
+  deletePartner(id: number): Promise<void>;
 }
 
 function generateVerificationCode(length = 6): string {
@@ -526,6 +537,67 @@ export class PostgresStorage implements IStorage {
   }
   async deleteLevelBenefit(id: number): Promise<void> {
     await db.delete(levelBenefits).where(eq(levelBenefits.id, id));
+  }
+  // Partner-related methods
+  async getPartner(id: number): Promise<Partner | undefined> {
+    const results = await db.select().from(partners).where(eq(partners.id, id));
+    return results[0];
+  }
+
+  async getPartnerByUsername(username: string): Promise<Partner | undefined> {
+    const results = await db.select().from(partners).where(eq(partners.username, username));
+    return results[0];
+  }
+
+  async createPartner(partner: InsertPartner): Promise<Partner> {
+    // Hash the password before storing it
+    const hashedPassword = await hashPassword(partner.password);
+
+    const [result] = await db.insert(partners).values({
+      ...partner,
+      password: hashedPassword,
+      active: true,
+      createdAt: new Date()
+    }).returning();
+    return result;
+  }
+
+  async updatePartnerPassword(id: number, newPassword: string): Promise<Partner> {
+    const hashedPassword = await hashPassword(newPassword);
+
+    const [updatedPartner] = await db
+      .update(partners)
+      .set({ password: hashedPassword })
+      .where(eq(partners.id, id))
+      .returning();
+
+    if (!updatedPartner) {
+      throw new Error("Partner not found");
+    }
+
+    return updatedPartner;
+  }
+
+  async updatePartnerStatus(id: number, active: boolean): Promise<Partner> {
+    const [result] = await db
+      .update(partners)
+      .set({ active })
+      .where(eq(partners.id, id))
+      .returning();
+
+    if (!result) {
+      throw new Error("Partner not found");
+    }
+
+    return result;
+  }
+
+  async listPartners(): Promise<Partner[]> {
+    return await db.select().from(partners);
+  }
+
+  async deletePartner(id: number): Promise<void> {
+    await db.delete(partners).where(eq(partners.id, id));
   }
 }
 
