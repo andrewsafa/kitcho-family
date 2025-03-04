@@ -53,6 +53,7 @@ export interface IStorage {
   getSpecialOffers(level: string): Promise<SpecialOffer[]>;
   createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer>;
   updateSpecialOfferStatus(id: number, active: boolean): Promise<SpecialOffer>;
+  updateSpecialOffer(id: number, updates: Partial<InsertSpecialOffer & { active: boolean }>): Promise<SpecialOffer>;
   deleteSpecialOffer(id: number): Promise<void>;
   exportData(): Promise<{
     customers: Customer[];
@@ -287,6 +288,24 @@ export class PostgresStorage implements IStorage {
       .set({ active })
       .where(eq(specialOffers.id, id))
       .returning();
+    return result;
+  }
+
+  // Add new method to update special offers with image support
+  async updateSpecialOffer(
+    id: number, 
+    updates: Partial<InsertSpecialOffer & { active: boolean }>
+  ): Promise<SpecialOffer> {
+    const [result] = await db
+      .update(specialOffers)
+      .set(updates)
+      .where(eq(specialOffers.id, id))
+      .returning();
+
+    if (!result) {
+      throw new Error("Special offer not found");
+    }
+
     return result;
   }
 

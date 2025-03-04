@@ -782,6 +782,79 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={offerForm.control}
+                        name="imagePath"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Offer Image (Optional)</FormLabel>
+                            <div className="flex gap-2 items-center">
+                              <Input
+                                type="text"
+                                placeholder="Image path"
+                                {...field}
+                                value={field.value || ""}
+                                className="flex-1"
+                                readOnly
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  const input = document.createElement("input");
+                                  input.type = "file";
+                                  input.accept = "image/*";
+                                  input.onchange = async (e) => {
+                                    const file = (e.target as HTMLInputElement).files?.[0];
+                                    if (file) {
+                                      const formData = new FormData();
+                                      formData.append("image", file);
+
+                                      try {
+                                        const res = await fetch("/api/offers/image", {
+                                          method: "POST",
+                                          body: formData,
+                                        });
+
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          field.onChange(data.imagePath);
+                                          toast({ title: "Image uploaded successfully" });
+                                        } else {
+                                          toast({
+                                            variant: "destructive",
+                                            title: "Failed to upload image",
+                                            description: "Please try again"
+                                          });
+                                        }
+                                      } catch (error) {
+                                        toast({
+                                          variant: "destructive",
+                                          title: "Error uploading image",
+                                          description: (error as Error).message
+                                        });
+                                      }
+                                    }
+                                  };
+                                  input.click();
+                                }}
+                              >
+                                Upload Image
+                              </Button>
+                            </div>
+                            {field.value && (
+                              <div className="mt-2">
+                                <img
+                                  src={field.value}
+                                  alt="Offer preview"
+                                  className="h-24 w-40 object-cover rounded"
+                                />
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <Button
                         type="submit"
                         disabled={addOfferMutation.isPending}
@@ -801,11 +874,20 @@ export default function AdminDashboard() {
                           <div key={offer.id} className="border p-4 rounded-lg">
                             <div className="flex justify-between">
                               <div>
+                                {offer.imagePath && (
+                                  <div className="mb-3">
+                                    <img
+                                      src={offer.imagePath}
+                                      alt={offer.title}
+                                      className="h-40 w-full object-cover rounded-lg"
+                                    />
+                                  </div>
+                                )}
                                 <h4 className="font-medium">{offer.title}</h4>
                                 <p className="text-gray-600">{offer.description}</p>
                                 <p className="mt-2 text-sm">Valid until: {new Date(offer.validUntil).toLocaleDateString()}</p>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-start gap-2 ml-4">
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -817,13 +899,15 @@ export default function AdminDashboard() {
                                 >
                                   Delete
                                 </Button>
-                                <span>{offer.active ? "Active" : "Inactive"}</span>
-                                <Switch
-                                  checked={offer.active}
-                                  onCheckedChange={(checked) => {
-                                    updateOfferMutation.mutate({ id: offer.id, active: checked });
-                                  }}
-                                />
+                                <div className="flex flex-col items-center">
+                                  <span>{offer.active ? "Active" : "Inactive"}</span>
+                                  <Switch
+                                    checked={offer.active}
+                                    onCheckedChange={(checked) => {
+                                      updateOfferMutation.mutate({ id: offer.id, active: checked });
+                                    }}
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -876,6 +960,79 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={benefitForm.control}
+                        name="imagePath"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Benefit Image (Optional)</FormLabel>
+                            <div className="flex gap-2 items-center">
+                              <Input
+                                type="text"
+                                placeholder="Image path"
+                                {...field}
+                                value={field.value || ""}
+                                className="flex-1"
+                                readOnly
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  const input = document.createElement("input");
+                                  input.type = "file";
+                                  input.accept = "image/*";
+                                  input.onchange = async (e) => {
+                                    const file = (e.target as HTMLInputElement).files?.[0];
+                                    if (file) {
+                                      const formData = new FormData();
+                                      formData.append("image", file);
+
+                                      try {
+                                        const res = await fetch("/api/benefits/image", {
+                                          method: "POST",
+                                          body: formData,
+                                        });
+
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          field.onChange(data.imagePath);
+                                          toast({ title: "Image uploaded successfully" });
+                                        } else {
+                                          toast({
+                                            variant: "destructive",
+                                            title: "Failed to upload image",
+                                            description: "Please try again"
+                                          });
+                                        }
+                                      } catch (error) {
+                                        toast({
+                                          variant: "destructive",
+                                          title: "Error uploading image",
+                                          description: (error as Error).message
+                                        });
+                                      }
+                                    }
+                                  };
+                                  input.click();
+                                }}
+                              >
+                                Upload Image
+                              </Button>
+                            </div>
+                            {field.value && (
+                              <div className="mt-2">
+                                <img
+                                  src={field.value}
+                                  alt="Benefit preview"
+                                  className="h-12 w-12 object-cover rounded"
+                                />
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <Button
                         type="submit"
                         disabled={addBenefitMutation.isPending}
@@ -894,14 +1051,21 @@ export default function AdminDashboard() {
                         {getLevelBenefits(selectedLevel).map(benefit => (
                           <div key={benefit.id} className="border p-4 rounded-lg">
                             <div className="flex justify-between">
-                              <p>{benefit.benefit}</p>
+                              <div className="flex items-center gap-3">
+                                {benefit.imagePath && (
+                                  <img
+                                    src={benefit.imagePath}
+                                    alt="Benefit"
+                                    className="h-10 w-10 object-cover rounded-full"
+                                  />
+                                )}
+                                <p>{benefit.benefit}</p>
+                              </div>
                               <div className="flex items-center gap-2">
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  onClick={() =>
-                                    deleteBenefitMutation.mutate(benefit.id)
-                                  }
+                                  onClick={() => deleteBenefitMutation.mutate(benefit.id)}
                                 >
                                   Delete
                                 </Button>
@@ -1014,8 +1178,8 @@ export default function AdminDashboard() {
                             <TableCell>{backup.filename || "N/A"}</TableCell>
                             <TableCell>
                               {backup.filename && (
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => window.open(`/api/backup/download/${backup.filename}`, '_blank')}
                                 >

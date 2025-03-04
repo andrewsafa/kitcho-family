@@ -11,9 +11,22 @@ import path from "path";
 import fs from "fs/promises";
 // Add regular fs for createReadStream
 import * as fsSync from "fs";
+import express from "express";
+
+// Create assets directory if it doesn't exist
+fs.mkdir("./public/assets", { recursive: true }).catch(console.error);
 
 const multerStorage = multer.diskStorage({
-  destination: "./store-assets",
+  destination: function (req, file, cb) {
+    // Use different destinations based on upload type
+    if (req.path.includes('/benefits/image')) {
+      cb(null, "./public/assets/benefits");
+    } else if (req.path.includes('/offers/image')) {
+      cb(null, "./public/assets/offers");
+    } else {
+      cb(null, "./store-assets");
+    }
+  },
   filename: function (req, file, cb) {
     cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
   }
@@ -22,8 +35,15 @@ const multerStorage = multer.diskStorage({
 const upload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express) {
+  // Create required directories
+  await fs.mkdir("./public/assets/benefits", { recursive: true });
+  await fs.mkdir("./public/assets/offers", { recursive: true });
+
   // Set up authentication
   setupAuth(app);
+
+  // Serve static files from public directory
+  app.use('/assets', express.static(path.join(process.cwd(), 'public/assets')));
 
   // Customer routes
   app.post("/api/customers", async (req, res) => {
@@ -93,6 +113,29 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Upload image for benefit
+  app.post("/api/benefits/image", requireAdmin, upload.single('image'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Process image - resize to small size for benefits
+      const imagePath = `/assets/benefits/${path.basename(req.file.path)}`;
+      await sharp(req.file.path)
+        .resize(100, 100) // Small size for benefits
+        .toFile(`./public${imagePath}`);
+
+      // Remove the original uploaded file
+      await fs.unlink(req.file.path);
+
+      res.json({ imagePath });
+    } catch (error) {
+      console.error("Error processing benefit image:", error);
+      res.status(500).json({ message: "Failed to process image" });
+    }
+  });
+
   // Add new DELETE endpoint for benefits
   app.delete("/api/benefits/:id", requireAdmin, async (req, res) => {
     try {
@@ -108,13 +151,14 @@ export async function registerRoutes(app: Express) {
   app.patch("/api/benefits/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { level, benefit, active } = req.body;
+      const { level, benefit, active, imagePath } = req.body;
 
       // Validate the update data
       const updateData = {
         ...(level && { level }),
         ...(benefit && { benefit }),
-        ...(typeof active !== 'undefined' && { active })
+        ...(typeof active !== 'undefined' && { active }),
+        ...(imagePath && { imagePath })
       };
 
       const updatedBenefit = await storage.updateLevelBenefit(id, updateData);
@@ -190,11 +234,40 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Upload image for offer
+  app.post("/api/offers/image", requireAdmin, upload.single('image'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Process image - resize to medium size for offers
+      const imagePath = `/assets/offers/${path.basename(req.file.path)}`;
+      await sharp(req.file.path)
+        .resize(300, 200) // Medium size for offers
+        .toFile(`./public${imagePath}`);
+
+      // Remove the original uploaded file
+      await fs.unlink(req.file.path);
+
+      res.json({ imagePath });
+    } catch (error) {
+      console.error("Error processing offer image:", error);
+      res.status(500).json({ message: "Failed to process image" });
+    }
+  });
+
   app.patch("/api/offers/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { active } = req.body;
-      const offer = await storage.updateSpecialOfferStatus(id, active);
+      const { active, imagePath } = req.body;
+
+      const updateData = {
+        ...(typeof active !== 'undefined' && { active }),
+        ...(imagePath && { imagePath })
+      };
+
+      const offer = await storage.updateSpecialOffer(id, updateData);
       res.json(offer);
     } catch (error) {
       res.status(404).json({ message: "Special offer not found" });
