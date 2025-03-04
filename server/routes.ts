@@ -90,6 +90,13 @@ export async function registerRoutes(app: Express) {
   // Set up authentication
   setupAuth(app);
 
+  // Initialize verification codes for existing customers
+  try {
+    await storage.ensureVerificationCodes();
+  } catch (error) {
+    console.error("Error initializing verification codes:", error);
+  }
+
   // Serve static files from public directory
   // Add detailed logging for static file requests
   app.use((req, res, next) => {

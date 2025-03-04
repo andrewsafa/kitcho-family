@@ -7,7 +7,7 @@ const LEVEL_ICONS = {
   Bronze: Award,
   Silver: Star,
   Gold: Crown,
-  Platinum: Trophy
+  Diamond: Trophy  // Changed from Platinum to Diamond to match schema
 };
 
 interface LoyaltyCardProps {
@@ -17,7 +17,7 @@ interface LoyaltyCardProps {
 export function LoyaltyCard({ customer }: LoyaltyCardProps) {
   const currentLevel = customer.level as keyof typeof LOYALTY_LEVELS;
   const { min, max } = LOYALTY_LEVELS[currentLevel];
-  const Icon = LEVEL_ICONS[currentLevel];
+  const Icon = LEVEL_ICONS[currentLevel] || Award;  // Added fallback
 
   const progress = max === Infinity 
     ? 100 

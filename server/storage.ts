@@ -24,7 +24,7 @@ import {
   storeSubmissions
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, desc, and, gt } from "drizzle-orm";
+import { eq, desc, and, gt, sql } from "drizzle-orm";
 import connectPg from 'connect-pg-simple';
 import session from 'express-session';
 
@@ -116,6 +116,29 @@ export class PostgresStorage implements IStorage {
       verificationCode: generateVerificationCode() 
     }).returning();
     return result;
+  }
+
+  // Add defensive code for existing customers without verification codes
+  async ensureVerificationCodes(): Promise<void> {
+    try {
+      // Get all customers without verification codes
+      const results = await db
+        .select()
+        .from(customers)
+        .where(sql`verification_code IS NULL`);
+
+      // Generate and update verification codes for these customers
+      for (const customer of results) {
+        await db
+          .update(customers)
+          .set({ verificationCode: generateVerificationCode() })
+          .where(eq(customers.id, customer.id));
+      }
+
+      console.log(`Updated verification codes for ${results.length} customers`);
+    } catch (error) {
+      console.error("Error ensuring verification codes:", error);
+    }
   }
 
   async listCustomers(): Promise<Customer[]> {

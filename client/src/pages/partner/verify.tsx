@@ -11,7 +11,7 @@ const LEVEL_ICONS = {
   Bronze: Award,
   Silver: Star,
   Gold: Crown,
-  Platinum: Trophy
+  Diamond: Trophy  // Changed from Platinum to Diamond to match schema
 };
 
 export default function PartnerVerify() {
@@ -29,7 +29,7 @@ export default function PartnerVerify() {
   };
 
   const currentLevel = customer?.level as keyof typeof LOYALTY_LEVELS | undefined;
-  const Icon = currentLevel ? LEVEL_ICONS[currentLevel] : Award;
+  const Icon = currentLevel ? LEVEL_ICONS[currentLevel] || Award : Award;  // Added fallback
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
