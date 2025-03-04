@@ -30,10 +30,18 @@ export function LevelBenefits({ currentLevel }: LevelBenefitsProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {benefits.map((benefit) => (
-            <li key={benefit.id} className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+            <li key={benefit.id} className="flex items-center gap-3">
+              {benefit.imagePath ? (
+                <img 
+                  src={benefit.imagePath} 
+                  alt="" 
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-2 w-2 rounded-full bg-primary" />
+              )}
               <span>{benefit.benefit}</span>
             </li>
           ))}

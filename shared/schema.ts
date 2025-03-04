@@ -30,6 +30,7 @@ export const levelBenefits = pgTable("level_benefits", {
   benefit: text("benefit").notNull(),
   active: boolean("active").notNull().default(true),
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
+  imagePath: text("image_path"),  // New field for benefit image
 });
 
 export const specialEvents = pgTable("special_events", {
@@ -49,6 +50,7 @@ export const specialOffers = pgTable("special_offers", {
   description: text("description").notNull(),
   validUntil: timestamp("valid_until").notNull(),
   active: boolean("active").notNull().default(true),
+  imagePath: text("image_path"),  // New field for offer image
 });
 
 export const storeSubmissions = pgTable("store_submissions", {
@@ -90,6 +92,9 @@ export const insertPointTransactionSchema = createInsertSchema(pointTransactions
 export const insertLevelBenefitSchema = createInsertSchema(levelBenefits).pick({
   level: true,
   benefit: true,
+  imagePath: true,
+}).extend({
+  imagePath: z.string().optional(),
 });
 
 export const insertSpecialEventSchema = createInsertSchema(specialEvents).pick({
@@ -109,8 +114,10 @@ export const insertSpecialOfferSchema = createInsertSchema(specialOffers).pick({
   title: true,
   description: true,
   validUntil: true,
+  imagePath: true,
 }).extend({
   validUntil: z.string().transform(str => new Date(str)),
+  imagePath: z.string().optional(),
 });
 
 export const insertStoreSubmissionSchema = createInsertSchema(storeSubmissions).pick({

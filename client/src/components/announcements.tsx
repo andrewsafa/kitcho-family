@@ -38,6 +38,15 @@ export function Announcements({ customerLevel }: AnnouncementsProps) {
         <div className="space-y-4">
           {specialOffers.map((offer) => (
             <div key={offer.id} className="p-4 bg-primary/5 rounded-lg">
+              {offer.imagePath && (
+                <div className="mb-3">
+                  <img
+                    src={offer.imagePath}
+                    alt={offer.title}
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
+                </div>
+              )}
               <div className="flex items-start gap-3">
                 <Gift className="h-5 w-5 text-primary mt-1" />
                 <div>

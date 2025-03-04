@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
+import { StyleSheet, View, ScrollView, RefreshControl, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Surface, Text, ActivityIndicator } from 'react-native-paper';
 import Constants from 'expo-constants';
@@ -55,6 +55,38 @@ export default function DashboardScreen() {
       return data;
     },
     enabled: !!customerId,
+  });
+
+  // Fetch benefits
+  const { data: benefits = [] } = useQuery({
+    queryKey: ['benefits', customer?.level],
+    queryFn: async () => {
+      if (!customer) return [];
+
+      const apiUrl = Constants.expoConfig?.extra?.apiUrl;
+      const response = await fetch(`${apiUrl}/api/benefits/${customer.level}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch benefits');
+      }
+      return response.json();
+    },
+    enabled: !!customer,
+  });
+
+  // Fetch offers
+  const { data: offers = [] } = useQuery({
+    queryKey: ['offers', customer?.level],
+    queryFn: async () => {
+      if (!customer) return [];
+
+      const apiUrl = Constants.expoConfig?.extra?.apiUrl;
+      const response = await fetch(`${apiUrl}/api/offers/${customer.level}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch offers');
+      }
+      return response.json();
+    },
+    enabled: !!customer,
   });
 
   if (isLoading) {
@@ -115,9 +147,27 @@ export default function DashboardScreen() {
         <Text variant="titleMedium" style={styles.sectionTitle}>
           Your Benefits
         </Text>
-        <Text variant="bodyMedium">
-          Coming soon: Exclusive {customer.level} member benefits!
-        </Text>
+        {benefits.length > 0 ? (
+          <View style={styles.benefitsList}>
+            {benefits.map((benefit, index) => (
+              <View key={index} style={styles.benefitItem}>
+                {benefit.imagePath ? (
+                  <Image 
+                    source={{ uri: Constants.expoConfig?.extra?.apiUrl + benefit.imagePath }} 
+                    style={styles.benefitImage} 
+                  />
+                ) : (
+                  <View style={styles.benefitDot} />
+                )}
+                <Text variant="bodyMedium">{benefit.benefit}</Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text variant="bodyMedium">
+            Coming soon: Exclusive {customer.level} member benefits!
+          </Text>
+        )}
       </Surface>
 
       {/* Special Offers */}
@@ -125,9 +175,29 @@ export default function DashboardScreen() {
         <Text variant="titleMedium" style={styles.sectionTitle}>
           Special Offers
         </Text>
-        <Text variant="bodyMedium">
-          Coming soon: Special offers for {customer.level} members!
-        </Text>
+        {offers.length > 0 ? (
+          <View style={styles.offersList}>
+            {offers.map((offer, index) => (
+              <View key={index} style={styles.offerItem}>
+                {offer.imagePath && (
+                  <Image 
+                    source={{ uri: Constants.expoConfig?.extra?.apiUrl + offer.imagePath }} 
+                    style={styles.offerImage} 
+                  />
+                )}
+                <Text variant="bodyMedium" style={styles.offerTitle}>{offer.title}</Text>
+                <Text variant="bodySmall" style={styles.offerDescription}>{offer.description}</Text>
+                <Text variant="bodySmall" style={styles.offerValidUntil}>
+                  Valid until: {new Date(offer.validUntil).toLocaleDateString()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text variant="bodyMedium">
+            Coming soon: Special offers for {customer.level} members!
+          </Text>
+        )}
       </Surface>
     </ScrollView>
   );
@@ -179,5 +249,50 @@ const styles = StyleSheet.create({
   error: {
     color: '#B00020',
     textAlign: 'center',
+  },
+  benefitsList: {
+    marginTop: 8,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  benefitDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF6B00', // Primary color
+    marginRight: 8,
+  },
+  benefitImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  offersList: {
+    marginTop: 8,
+  },
+  offerItem: {
+    marginBottom: 16,
+  },
+  offerImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  offerTitle: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  offerDescription: {
+    opacity: 0.7,
+    marginBottom: 4,
+  },
+  offerValidUntil: {
+    fontSize: 12,
+    opacity: 0.6,
   },
 });
