@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -34,7 +34,7 @@ import { Search, LogOut, User, CreditCard } from "lucide-react";
 
 export default function PartnerDashboard() {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [mobileNumber, setMobileNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
@@ -43,14 +43,13 @@ export default function PartnerDashboard() {
   // Get partner profile information
   const { data: partner, isLoading: isLoadingPartner } = useQuery({
     queryKey: ["/api/partner/me"],
-    retry: false,
     onError: () => {
       toast({
         title: "Authentication Error",
         description: "Please log in to access the partner dashboard",
         variant: "destructive"
       });
-      navigate("/partner/login");
+      setLocation("/partner/login");
     }
   });
 
@@ -63,7 +62,7 @@ export default function PartnerDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/partner/me"] });
       toast({ title: "Logged out successfully" });
-      navigate("/partner/login");
+      setLocation("/partner/login");
     },
     onError: (error) => {
       toast({
@@ -136,7 +135,7 @@ export default function PartnerDashboard() {
       title: "Verification successful",
       description: `Customer ${customer.name} verified successfully`
     });
-    
+
     // Close dialog and reset form
     setShowVerificationDialog(false);
     setVerificationCode("");
@@ -144,7 +143,7 @@ export default function PartnerDashboard() {
     setCustomer(null);
 
     // Navigate to customer dashboard
-    navigate(`/dashboard/${customer.mobile}`);
+    setLocation(`/dashboard/${customer.mobile}`);
   };
 
   // Handle logout

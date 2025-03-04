@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -38,7 +38,7 @@ const formSchema = z.object({
 
 export default function PartnerLogin() {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -66,7 +66,7 @@ export default function PartnerLogin() {
         title: "Login successful",
         description: `Welcome back, ${data.name}`,
       });
-      navigate("/partner/dashboard");
+      setLocation("/partner/dashboard");
     },
     onError: (error) => {
       toast({
@@ -141,7 +141,7 @@ export default function PartnerLogin() {
           <Button 
             variant="outline" 
             className="w-full" 
-            onClick={() => navigate("/partner")}
+            onClick={() => setLocation("/partner")}
           >
             Verify Customer
           </Button>
