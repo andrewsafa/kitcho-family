@@ -676,7 +676,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Add a new partner verification endpoint
+  // Update the partner verification endpoint
   app.get("/api/partner/verify/:mobile", async (req, res) => {
     try {
       const mobile = req.params.mobile;
@@ -687,13 +687,14 @@ export async function registerRoutes(app: Express) {
       }
 
       // Return only the necessary information for verification
-      // Excludes sensitive details but includes loyalty information
+      // Now includes the verification code
       res.json({
         id: customer.id,
         name: customer.name,
         mobile: customer.mobile,
         level: customer.level,
-        points: customer.points
+        points: customer.points,
+        verificationCode: customer.verificationCode
       });
     } catch (error) {
       console.error("Partner verification error:", error);

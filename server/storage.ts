@@ -79,6 +79,15 @@ export interface IStorage {
   deleteLevelBenefit(id: number): Promise<void>;
 }
 
+function generateVerificationCode(length = 6): string {
+  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return code;
+}
+
 export class PostgresStorage implements IStorage {
   sessionStore: session.Store;
 
@@ -103,7 +112,8 @@ export class PostgresStorage implements IStorage {
     const [result] = await db.insert(customers).values({
       ...customer,
       points: 0,
-      level: "Bronze"
+      level: "Bronze",
+      verificationCode: generateVerificationCode() 
     }).returning();
     return result;
   }

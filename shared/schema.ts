@@ -14,6 +14,7 @@ export const customers = pgTable("customers", {
   mobile: text("mobile").notNull().unique(),
   points: integer("points").notNull().default(0),
   level: text("level").notNull().default("Bronze"),
+  verificationCode: text("verification_code"), // New field for customer verification
 });
 
 export const pointTransactions = pgTable("point_transactions", {

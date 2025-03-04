@@ -17,7 +17,7 @@ const LEVEL_ICONS = {
 export default function PartnerVerify() {
   const [mobile, setMobile] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
-  
+
   const { data: customer, isLoading, error } = useQuery<Customer>({
     queryKey: [`/api/partner/verify/${mobile}`],
     enabled: searchPerformed && !!mobile,
@@ -96,6 +96,20 @@ export default function PartnerVerify() {
                     </div>
                     {Icon && <Icon className="h-12 w-12 text-primary" />}
                   </div>
+
+                  {customer.verificationCode && (
+                    <div className="mb-4 p-3 border border-primary rounded-md bg-primary/5">
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-1">Verification Code</p>
+                        <p className="text-2xl font-bold tracking-widest text-primary">
+                          {customer.verificationCode}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ask customer to show this code on their app
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-3 border-t pt-4">
                     <div className="flex justify-between items-center">
