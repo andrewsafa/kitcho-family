@@ -7,6 +7,7 @@ import CustomerSignup from "@/pages/customer/signup";
 import CustomerDashboard from "@/pages/customer/dashboard";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminLogin from "@/pages/admin/login";
+import PartnerVerify from "@/pages/partner/verify";
 import { useQuery } from "@tanstack/react-query";
 
 function ProtectedAdminRoute({ component: Component }: { component: React.ComponentType }) {
@@ -31,6 +32,7 @@ function Router() {
     <Switch>
       <Route path="/" component={CustomerSignup} />
       <Route path="/dashboard/:mobile" component={CustomerDashboard} />
+      <Route path="/partner" component={PartnerVerify} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin">
         <ProtectedAdminRoute component={AdminDashboard} />
