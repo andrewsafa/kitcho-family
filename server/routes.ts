@@ -676,5 +676,33 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Add a new partner verification endpoint
+  app.get("/api/partner/verify/:mobile", async (req, res) => {
+    try {
+      const mobile = req.params.mobile;
+      const customer = await storage.getCustomerByMobile(mobile);
+
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+
+      // Return only the necessary information for verification
+      // Excludes sensitive details but includes loyalty information
+      res.json({
+        id: customer.id,
+        name: customer.name,
+        mobile: customer.mobile,
+        level: customer.level,
+        points: customer.points
+      });
+    } catch (error) {
+      console.error("Partner verification error:", error);
+      res.status(500).json({ 
+        message: "Failed to verify customer",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   return createServer(app);
 }
