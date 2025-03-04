@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialEventSchema, insertSpecialOfferSchema } from "@shared/schema";
+import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { setupAuth, requireAdmin, hashPassword, comparePasswords } from "./auth";
 import { backupScheduler } from "./backup-scheduler";
@@ -9,6 +9,8 @@ import multer from "multer";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs/promises";
+// Add regular fs for createReadStream
+import * as fsSync from "fs";
 
 const multerStorage = multer.diskStorage({
   destination: "./store-assets",
@@ -166,31 +168,6 @@ export async function registerRoutes(app: Express) {
   app.get("/api/events", async (_req, res) => {
     const events = await storage.listActiveEvents();
     res.json(events);
-  });
-
-  app.post("/api/events", requireAdmin, async (req, res) => {
-    try {
-      const eventData = insertSpecialEventSchema.parse(req.body);
-      const event = await storage.createEvent(eventData);
-      res.status(201).json(event);
-    } catch (error) {
-      if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
-      } else {
-        res.status(500).json({ message: "Internal server error" });
-      }
-    }
-  });
-
-  app.patch("/api/events/:id", requireAdmin, async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const { active } = req.body;
-      const event = await storage.updateEventStatus(id, active);
-      res.json(event);
-    } catch (error) {
-      res.status(404).json({ message: "Event not found" });
-    }
   });
 
   // Special Offers routes
@@ -388,12 +365,15 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Backup download endpoint
+  // Backup download endpoint - Fixed to use fs sync for streaming
   app.get("/api/backup/download/:filename", requireAdmin, async (req, res) => {
     try {
       const backupConfig = backupScheduler.getConfig();
       const filename = req.params.filename;
       const filepath = path.join(backupConfig.backupDir, filename);
+
+      // Log the file path for debugging
+      console.log(`Attempting to download: ${filepath}`);
 
       // Validate filename to prevent directory traversal
       if (filename.includes('..') || !filename.endsWith('.json')) {
@@ -403,7 +383,9 @@ export async function registerRoutes(app: Express) {
       // Check if file exists
       try {
         await fs.access(filepath);
+        console.log(`File exists: ${filepath}`);
       } catch (error) {
+        console.error(`File not found: ${filepath}`, error);
         return res.status(404).json({ message: "Backup file not found" });
       }
 
@@ -411,11 +393,17 @@ export async function registerRoutes(app: Express) {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
-      // Send the file
-      const fileStream = fs.createReadStream(filepath);
-      fileStream.pipe(res);
+      try {
+        // Read file content and send it directly
+        const fileContent = await fs.readFile(filepath, 'utf-8');
+        res.send(fileContent);
+      } catch (error) {
+        console.error(`Error reading file: ${filepath}`, error);
+        res.status(500).json({ message: `Failed to read backup file: ${error.message}` });
+      }
     } catch (error) {
-      res.status(500).json({ message: "Failed to download backup file" });
+      console.error('Backup download error:', error);
+      res.status(500).json({ message: `Failed to download backup file: ${error.message}` });
     }
   });
 

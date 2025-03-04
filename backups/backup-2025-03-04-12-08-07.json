@@ -1,0 +1,177 @@
+{
+  "customers": [
+    {
+      "id": 16,
+      "name": "Andrew Safa",
+      "mobile": "+201004408092",
+      "points": 60500,
+      "level": "Bronze"
+    },
+    {
+      "id": 17,
+      "name": "Nour kitcho",
+      "mobile": "+201050046246",
+      "points": 400000,
+      "level": "Gold"
+    },
+    {
+      "id": 18,
+      "name": "Sharly Safa",
+      "mobile": "+201225334418",
+      "points": 204000,
+      "level": "Silver"
+    }
+  ],
+  "transactions": [
+    {
+      "id": 35,
+      "customerId": 16,
+      "points": 1000,
+      "description": "invoice n. 1",
+      "timestamp": "2025-03-03T13:17:27.450Z"
+    },
+    {
+      "id": 36,
+      "customerId": 16,
+      "points": -500,
+      "description": "return invoice n. 1",
+      "timestamp": "2025-03-03T13:19:48.681Z"
+    },
+    {
+      "id": 37,
+      "customerId": 16,
+      "points": 100000,
+      "description": "invoice 2",
+      "timestamp": "2025-03-03T13:25:31.372Z"
+    },
+    {
+      "id": 38,
+      "customerId": 16,
+      "points": -100000,
+      "description": "test",
+      "timestamp": "2025-03-03T14:42:22.054Z"
+    },
+    {
+      "id": 39,
+      "customerId": 16,
+      "points": 20000,
+      "description": "Special",
+      "timestamp": "2025-03-03T15:40:34.130Z"
+    },
+    {
+      "id": 40,
+      "customerId": 16,
+      "points": 20000,
+      "description": "Large",
+      "timestamp": "2025-03-03T15:41:01.456Z"
+    },
+    {
+      "id": 41,
+      "customerId": 16,
+      "points": 50000,
+      "description": "Medium",
+      "timestamp": "2025-03-03T18:44:03.798Z"
+    },
+    {
+      "id": 42,
+      "customerId": 16,
+      "points": 20000,
+      "description": "test",
+      "timestamp": "2025-03-03T18:44:37.406Z"
+    },
+    {
+      "id": 43,
+      "customerId": 16,
+      "points": -50000,
+      "description": "test",
+      "timestamp": "2025-03-03T19:11:31.933Z"
+    },
+    {
+      "id": 44,
+      "customerId": 17,
+      "points": 400000,
+      "description": "Medium",
+      "timestamp": "2025-03-03T19:35:10.961Z"
+    },
+    {
+      "id": 45,
+      "customerId": 18,
+      "points": 204000,
+      "description": "Special",
+      "timestamp": "2025-03-03T21:49:23.578Z"
+    }
+  ],
+  "benefits": [],
+  "events": [
+    {
+      "id": 3,
+      "name": "",
+      "description": "",
+      "multiplier": 2,
+      "startDate": "2025-03-03T00:00:00.000Z",
+      "endDate": "2025-03-10T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "id": 4,
+      "name": "andrew",
+      "description": "Medium",
+      "multiplier": 2,
+      "startDate": "2025-03-03T00:00:00.000Z",
+      "endDate": "2025-03-10T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "id": 5,
+      "name": "BB1",
+      "description": "",
+      "multiplier": 2,
+      "startDate": "2025-03-03T00:00:00.000Z",
+      "endDate": "2025-03-10T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "id": 6,
+      "name": "SS2",
+      "description": "",
+      "multiplier": 2,
+      "startDate": "2025-03-03T00:00:00.000Z",
+      "endDate": "2025-03-10T00:00:00.000Z",
+      "active": true
+    }
+  ],
+  "offers": [
+    {
+      "id": 9,
+      "level": "Bronze",
+      "title": "",
+      "description": "",
+      "validUntil": "2025-04-02T00:00:00.000Z",
+      "active": false
+    },
+    {
+      "id": 11,
+      "level": "Bronze",
+      "title": "B2",
+      "description": "",
+      "validUntil": "2025-04-02T00:00:00.000Z",
+      "active": false
+    },
+    {
+      "id": 13,
+      "level": "Silver",
+      "title": "S2",
+      "description": "",
+      "validUntil": "2025-04-02T00:00:00.000Z",
+      "active": false
+    },
+    {
+      "id": 12,
+      "level": "Silver",
+      "title": "S1",
+      "description": "",
+      "validUntil": "2025-04-02T00:00:00.000Z",
+      "active": false
+    }
+  ]
+}
