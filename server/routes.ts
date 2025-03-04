@@ -91,7 +91,7 @@ export async function registerRoutes(app: Express) {
   setupAuth(app);
 
   // Serve static files from public directory
-  app.use('/assets', express.static(path.join(process.cwd(), 'public/assets')));
+  app.use('/assets', express.static('public/assets'));
 
   // Customer routes
   app.post("/api/customers", async (req, res) => {
@@ -521,8 +521,6 @@ export async function registerRoutes(app: Express) {
         iconPath: files.icon?.[0] ? 'icon.png' : null,
         featureGraphicPath: files.featureGraphic?.[0] ? 'feature.png' : null,
         screenshotPaths: files.screenshots?.map((_, index) => `screenshot-${index + 1}.png`) || [],
-        status: 'pending',
-        createdAt: new Date()
       });
 
       res.status(201).json({

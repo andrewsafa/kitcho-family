@@ -153,7 +153,7 @@ export default function DashboardScreen() {
               <View key={index} style={styles.benefitItem}>
                 {benefit.imagePath ? (
                   <Image 
-                    source={{ uri: Constants.expoConfig?.extra?.apiUrl + benefit.imagePath }} 
+                    source={{ uri: `${Constants.expoConfig?.extra?.apiUrl}${benefit.imagePath}` }} 
                     style={styles.benefitImage} 
                   />
                 ) : (
@@ -181,7 +181,7 @@ export default function DashboardScreen() {
               <View key={index} style={styles.offerItem}>
                 {offer.imagePath && (
                   <Image 
-                    source={{ uri: Constants.expoConfig?.extra?.apiUrl + offer.imagePath }} 
+                    source={{ uri: `${Constants.expoConfig?.extra?.apiUrl}${offer.imagePath}` }} 
                     style={styles.offerImage} 
                   />
                 )}

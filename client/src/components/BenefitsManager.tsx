@@ -103,9 +103,18 @@ export function BenefitsManager() {
             key={benefit.id}
             className="flex items-center justify-between p-4 border rounded-lg bg-white shadow-sm"
           >
-            <div>
-              <p className="font-medium">{benefit.level}</p>
-              <p className="text-sm text-gray-600">{benefit.benefit}</p>
+            <div className="flex items-center gap-3">
+              {benefit.imagePath && (
+                <img 
+                  src={benefit.imagePath} 
+                  alt="" 
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+              )}
+              <div>
+                <p className="font-medium">{benefit.level}</p>
+                <p className="text-sm text-gray-600">{benefit.benefit}</p>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button
@@ -160,6 +169,7 @@ export function BenefitsManager() {
                 updates: {
                   level: formData.get("level") as string,
                   benefit: formData.get("benefit") as string,
+                  imagePath: formData.get("imagePath") as string || undefined,
                 },
               });
             }}
@@ -182,6 +192,23 @@ export function BenefitsManager() {
                 defaultValue={editingBenefit?.benefit}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="imagePath">صورة الميزة</Label>
+              <Input
+                id="imagePath"
+                name="imagePath"
+                defaultValue={editingBenefit?.imagePath || ""}
+              />
+              {editingBenefit?.imagePath && (
+                <div className="mt-2">
+                  <img
+                    src={editingBenefit.imagePath}
+                    alt="Benefit preview"
+                    className="h-12 w-12 object-cover rounded-full"
+                  />
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button
