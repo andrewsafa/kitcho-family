@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Download, Upload, Settings, CreditCard, Gift, Award, Cog, Users } from "lucide-react";
+import { Search, Download, Upload, Settings, CreditCard, Gift, Award, Cog, Users, Key } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -336,6 +336,30 @@ export default function AdminDashboard() {
     }
   });
 
+  // Add password reset mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (customerId: number) => {
+      const res = await apiRequest("POST", `/api/admin/customers/${customerId}/reset-password`, {
+        newPassword: "new123" // Default password for reset
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Password reset successfully",
+        description: `Customer password has been reset to 'new123'`
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error resetting password",
+        description: error.message
+      });
+    }
+  });
+
   const deductPointsMutation = useMutation({
     mutationFn: async (data: { customerId: number; points: number; reason: string }) => {
       const res = await apiRequest("POST", "/api/points/delete", {
@@ -371,6 +395,12 @@ export default function AdminDashboard() {
       } catch (error) {
         toast({ variant: "destructive", title: "Error deleting customer", description: (error as Error).message });
       }
+    }
+  };
+
+  const handleResetPassword = (customer: Customer) => {
+    if (window.confirm(`Reset password for ${customer.name} to 'new123'?`)) {
+      resetPasswordMutation.mutate(customer.id);
     }
   };
 
@@ -699,11 +729,12 @@ export default function AdminDashboard() {
                                   View History
                                 </Button>
                                 <Button
-                                  variant="destructive"
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => handleDeleteCustomer(customer)}
+                                  onClick={() => handleResetPassword(customer)}
                                 >
-                                  Delete
+                                  <Key className="h-3 w-3 mr-1" />
+                                  Reset Password
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -711,6 +742,13 @@ export default function AdminDashboard() {
                                   onClick={() => handleDeletePoints(customer)}
                                 >
                                   Deduct Points
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteCustomer(customer)}
+                                >
+                                  Delete
                                 </Button>
                               </div>
                             </TableCell>
@@ -788,140 +826,60 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={offerForm.control}
-                        name="imagePath"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Offer Image (Optional)</FormLabel>
-                            <div className="flex gap-2 items-center">
-                              <Input
-                                type="text"
-                                placeholder="Image path"
-                                {...field}
-                                value={field.value || ""}
-                                className="flex-1"
-                                readOnly
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  const input = document.createElement("input");
-                                  input.type = "file";
-                                  input.accept = "image/*";
-                                  input.onchange = async (e) => {
-                                    const file = (e.target as HTMLInputElement).files?.[0];
-                                    if (file) {
-                                      const formData = new FormData();
-                                      formData.append("image", file);
-
-                                      try {
-                                        const res = await fetch("/api/offers/image", {
-                                          method: "POST",
-                                          body: formData,
-                                        });
-
-                                        if (res.ok) {
-                                          const data = await res.json();
-                                          field.onChange(data.imagePath);
-                                          toast({ title: "Image uploaded successfully" });
-                                        } else {
-                                          toast({
-                                            variant: "destructive",
-                                            title: "Failed to upload image",
-                                            description: "Please try again"
-                                          });
-                                        }
-                                      } catch (error) {
-                                        toast({
-                                          variant: "destructive",
-                                          title: "Error uploading image",
-                                          description: (error as Error).message
-                                        });
-                                      }
-                                    }
-                                  };
-                                  input.click();
-                                }}
-                              >
-                                Upload Image
-                              </Button>
-                            </div>
-                            {field.value && (
-                              <div className="mt-2">
-                                <img
-                                  src={field.value}
-                                  alt="Offer preview"
-                                  className="h-24 w-40 object-cover rounded"
-                                />
-                              </div>
-                            )}
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="submit"
-                        disabled={addOfferMutation.isPending}
-                      >
-                        Create Offer
+                      <Button type="submit" disabled={addOfferMutation.isPending}>
+                        Add Offer
                       </Button>
                     </form>
                   </Form>
 
-                  {/* Offers Display */}
-                  <div className="mt-8 bg-white p-4 rounded-lg border">
-                    <h3 className="text-lg font-medium mb-4">Offers for {offerLevel}</h3>
-
-                    {getLevelOffers(offerLevel).length > 0 ? (
-                      <div className="space-y-4">
-                        {getLevelOffers(offerLevel).map(offer => (
-                          <div key={offer.id} className="border p-4 rounded-lg">
-                            <div className="flex justify-between">
-                              <div>
-                                {offer.imagePath && (
-                                  <div className="mb-3">
-                                    <img
-                                      src={offer.imagePath}
-                                      alt={offer.title}
-                                      className="h-40 w-full object-cover rounded-lg"
-                                    />
-                                  </div>
-                                )}
-                                <h4 className="font-medium">{offer.title}</h4>
-                                <p className="text-gray-600">{offer.description}</p>
-                                <p className="mt-2 text-sm">Valid until: {new Date(offer.validUntil).toLocaleDateString()}</p>
-                              </div>
-                              <div className="flex items-start gap-2 ml-4">
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (window.confirm("Are you sure you want to delete this offer?")) {
-                                      deleteOfferMutation.mutate(offer.id);
-                                    }
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                                <div className="flex flex-col items-center">
-                                  <span>{offer.active ? "Active" : "Inactive"}</span>
-                                  <Switch
-                                    checked={offer.active}
-                                    onCheckedChange={(checked) => {
-                                      updateOfferMutation.mutate({ id: offer.id, active: checked });
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                  {/* List of special offers for selected level */}
+                  <div className="rounded-md border mt-6">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Valid Until</TableHead>
+                          <TableHead>Active</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getLevelOffers(offerLevel).map((offer) => (
+                          <TableRow key={offer.id}>
+                            <TableCell className="font-medium">{offer.title}</TableCell>
+                            <TableCell>{offer.description}</TableCell>
+                            <TableCell>
+                              {new Date(offer.validUntil).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={offer.active}
+                                onCheckedChange={(checked) => {
+                                  updateOfferMutation.mutate({
+                                    id: offer.id,
+                                    active: checked
+                                  });
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  if (window.confirm(`Delete offer "${offer.title}"?`)) {
+                                    deleteOfferMutation.mutate(offer.id);
+                                  }
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </div>
-                    ) : (
-                      <p className="text-center p-4 border rounded-lg">No offers found for {offerLevel} level</p>
-                    )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </CardContent>
@@ -960,136 +918,60 @@ export default function AdminDashboard() {
                           <FormItem>
                             <FormLabel>Benefit Description</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter benefit" {...field} />
+                              <Input placeholder="Enter benefit description" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={benefitForm.control}
-                        name="imagePath"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Benefit Image (Optional)</FormLabel>
-                            <div className="flex gap-2 items-center">
-                              <Input
-                                type="text"
-                                placeholder="Image path"
-                                {...field}
-                                value={field.value || ""}
-                                className="flex-1"
-                                readOnly
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  const input = document.createElement("input");
-                                  input.type = "file";
-                                  input.accept = "image/*";
-                                  input.onchange = async (e) => {
-                                    const file = (e.target as HTMLInputElement).files?.[0];
-                                    if (file) {
-                                      const formData = new FormData();
-                                      formData.append("image", file);
-
-                                      try {
-                                        const res = await fetch("/api/benefits/image", {
-                                          method: "POST",
-                                          body: formData,
-                                        });
-
-                                        if (res.ok) {
-                                          const data = await res.json();
-                                          field.onChange(data.imagePath);
-                                          toast({ title: "Image uploaded successfully" });
-                                        } else {
-                                          toast({
-                                            variant: "destructive",
-                                            title: "Failed to upload image",
-                                            description: "Please try again"
-                                          });
-                                        }
-                                      } catch (error) {
-                                        toast({
-                                          variant: "destructive",
-                                          title: "Error uploading image",
-                                          description: (error as Error).message
-                                        });
-                                      }
-                                    }
-                                  };
-                                  input.click();
-                                }}
-                              >
-                                Upload Image
-                              </Button>
-                            </div>
-                            {field.value && (
-                              <div className="mt-2">
-                                <img
-                                  src={field.value}
-                                  alt="Benefit preview"
-                                  className="h-12 w-12 object-cover rounded"
-                                />
-                              </div>
-                            )}
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="submit"
-                        disabled={addBenefitMutation.isPending}
-                      >
+                      <Button type="submit" disabled={addBenefitMutation.isPending}>
                         Add Benefit
                       </Button>
                     </form>
                   </Form>
 
-                  {/* Benefits Display */}
-                  <div className="mt-8 bg-white p-4 rounded-lg border">
-                    <h3 className="text-lg font-medium mb-4">Benefits for {selectedLevel}</h3>
-
-                    {getLevelBenefits(selectedLevel).length > 0 ? (
-                      <div className="space-y-4">
-                        {getLevelBenefits(selectedLevel).map(benefit => (
-                          <div key={benefit.id} className="border p-4 rounded-lg">
-                            <div className="flex justify-between">
-                              <div className="flex items-center gap-3">
-                                {benefit.imagePath && (
-                                  <img
-                                    src={benefit.imagePath}
-                                    alt="Benefit"
-                                    className="h-10 w-10 object-cover rounded-full"
-                                  />
-                                )}
-                                <p>{benefit.benefit}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => deleteBenefitMutation.mutate(benefit.id)}
-                                >
-                                  Delete
-                                </Button>
-                                <span>{benefit.active ? "Active" : "Inactive"}</span>
-                                <Switch
-                                  checked={benefit.active}
-                                  onCheckedChange={(checked) => {
-                                    updateBenefitMutation.mutate({ id: benefit.id, active: checked });
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </div>
+                  {/* List of benefits for selected level */}
+                  <div className="rounded-md border mt-6">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Benefit</TableHead>
+                          <TableHead>Active</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getLevelBenefits(selectedLevel).map((benefit) => (
+                          <TableRow key={benefit.id}>
+                            <TableCell className="font-medium">{benefit.benefit}</TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={benefit.active}
+                                onCheckedChange={(checked) => {
+                                  updateBenefitMutation.mutate({
+                                    id: benefit.id,
+                                    active: checked
+                                  });
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  if (window.confirm(`Delete benefit "${benefit.benefit}"?`)) {
+                                    deleteBenefitMutation.mutate(benefit.id);
+                                  }
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </div>
-                    ) : (
-                      <p className="text-center p-4 border rounded-lg">No benefits found for {selectedLevel} level</p>
-                    )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </CardContent>
@@ -1098,279 +980,273 @@ export default function AdminDashboard() {
 
           {/* Settings Tab */}
           <TabsContent value="settings">
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Change Admin Password</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Form {...changePasswordForm}>
-                  <form onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)} className="space-y-4">
-                    <FormField
-                      control={changePasswordForm.control}
-                      name="currentPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Current Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" autoComplete="current-password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={changePasswordForm.control}
-                      name="newPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" autoComplete="new-password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={changePasswordForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm New Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" autoComplete="new-password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      disabled={changePasswordMutation.isPending}
-                    >
-                      Change Password
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-
             <Card>
               <CardHeader>
-                <CardTitle>Backup Settings</CardTitle>
+                <CardTitle>Admin Settings</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <Button onClick={() => setShowBackupSettings(true)}>
-                    Configure Automatic Backup
-                  </Button>
+                <div className="space-y-8">
+                  {/* Change admin password form */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Change Admin Password</h3>
+                    <Form {...changePasswordForm}>
+                      <form onSubmit={changePasswordForm.handleSubmit(onChangePasswordSubmit)} className="space-y-4">
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="currentPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Current Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="newPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={changePasswordForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirm New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button type="submit" disabled={changePasswordMutation.isPending}>
+                          Change Password
+                        </Button>
+                      </form>
+                    </Form>
+                  </div>
 
-                  <h3 className="text-lg font-medium mt-6">Backup History</h3>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>File</TableHead>
-                          <TableHead>Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {backupHistory.map((backup, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{format(new Date(backup.timestamp), "MMM d, yyyy h:mm a")}</TableCell>
-                            <TableCell>{backup.success !== false ? "Success" : "Failed"}</TableCell>
-                            <TableCell>{backup.filename || "N/A"}</TableCell>
-                            <TableCell>
-                              {backup.filename && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => window.open(`/api/backup/download/${backup.filename}`, '_blank')}
-                                >
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        {backupHistory.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
-                              No backup history available
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                  {/* Backup settings */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">Backup Settings</h3>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowBackupSettings(!showBackupSettings)}
+                      >
+                        {showBackupSettings ? "Hide Settings" : "Show Settings"}
+                      </Button>
+                    </div>
+
+                    {showBackupSettings && backupConfig && (
+                      <div className="space-y-4 p-4 border rounded-md">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Backup Frequency</label>
+                            <Select
+                              value={backupConfig.frequency}
+                              onValueChange={(value) => {
+                                updateBackupConfigMutation.mutate({
+                                  ...backupConfig,
+                                  frequency: value
+                                });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Frequency" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0 0 * * *">Daily at midnight</SelectItem>
+                                <SelectItem value="0 0 * * 0">Weekly on Sunday</SelectItem>
+                                <SelectItem value="0 0 1 * *">Monthly on the 1st</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Max Backups to Keep</label>
+                            <Select
+                              value={backupConfig.maxBackups.toString()}
+                              onValueChange={(value) => {
+                                updateBackupConfigMutation.mutate({
+                                  ...backupConfig,
+                                  maxBackups: parseInt(value)
+                                });
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Max Backups" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="3">3 backups</SelectItem>
+                                <SelectItem value="7">7 backups</SelectItem>
+                                <SelectItem value="14">14 backups</SelectItem>
+                                <SelectItem value="30">30 backups</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="flex items-center space-x-2">
+                            <Checkbox
+                              checked={backupConfig.enabled}
+                              onCheckedChange={(checked) => {
+                                updateBackupConfigMutation.mutate({
+                                  ...backupConfig,
+                                  enabled: !!checked
+                                });
+                              }}
+                            />
+                            <span>Enable Automated Backups</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Backup history */}
+                    <div className="mt-6">
+                      <h4 className="text-md font-medium mb-3">Backup History</h4>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>File</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {backupHistory.map((backup, index) => (
+                              <TableRow key={index}>
+                                <TableCell>
+                                  {new Date(backup.timestamp).toLocaleString()}
+                                </TableCell>
+                                <TableCell>{backup.filename}</TableCell>
+                                <TableCell>
+                                  {backup.success ? (
+                                    <span className="text-green-600">Success</span>
+                                  ) : (
+                                    <span className="text-red-600">Failed</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {backup.success && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        window.location.href = `/api/backup/download/${backup.filename}`;
+                                      }}
+                                    >
+                                      Download
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {backupHistory.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center py-4">
+                                  No backup history found
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
 
-        {/* Backup Settings Dialog */}
-        <Dialog open={showBackupSettings} onOpenChange={setShowBackupSettings}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Backup Configuration</DialogTitle>
-              <DialogDescription>
-                Configure automatic backup settings
-              </DialogDescription>
-            </DialogHeader>
-            {backupConfig && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Backup Frequency (cron)</label>
-                    <Input
-                      value={backupConfig.frequency}
-                      onChange={(e) =>
-                        updateBackupConfigMutation.mutate({
-                          ...backupConfig,
-                          frequency: e.target.value
-                        })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">e.g. "0 0 * * *" for daily at midnight</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Max Backups to Keep</label>
-                    <Input
-                      type="number"
-                      value={backupConfig.maxBackups}
-                      onChange={(e) =>
-                        updateBackupConfigMutation.mutate({
-                          ...backupConfig,
-                          maxBackups: parseInt(e.target.value)
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+      {/* Point Transaction History Dialog */}
+      <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Transaction History - {selectedMemberHistory?.name}</DialogTitle>
+            <DialogDescription>
+              View all point transactions for this customer
+            </DialogDescription>
+          </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Email To (Optional)</label>
-                    <Input
-                      value={backupConfig.emailTo || ""}
-                      onChange={(e) =>
-                        updateBackupConfigMutation.mutate({
-                          ...backupConfig,
-                          emailTo: e.target.value || null
-                        })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">Email to send backup files to</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enabled"
-                    checked={backupConfig.enabled}
-                    onCheckedChange={(checked) =>
-                      updateBackupConfigMutation.mutate({
-                        ...backupConfig,
-                        enabled: !!checked
-                      })
-                    }
-                  />
-                  <label
-                    htmlFor="enabled"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Enable Automatic Backups
-                  </label>
-                </div>
+          <div className="max-h-96 overflow-y-auto">
+            {isLoadingHistory ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            )}
-            <DialogFooter>
-              <Button onClick={() => setShowBackupSettings(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Transaction History Dialog */}
-        <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                Transaction History: {selectedMemberHistory?.name}
-              </DialogTitle>
-              <DialogDescription>
-                Level: {selectedMemberHistory?.level} | Current Points: {selectedMemberHistory?.points}
-              </DialogDescription>
-            </DialogHeader>
-
-            {isLoadingHistory && (
-              <div className="flex justify-center my-8">
-                Loading...
-              </div>
-            )}
-
-            {historyError && (
-              <div className="text-center text-red-500 my-8">
-                Error loading transaction history
-              </div>
-            )}
-
-            {!isLoadingHistory && !historyError && memberHistory.length > 0 ? (
-              <div className="rounded-md border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Points</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {memberHistory.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{format(new Date(transaction.timestamp), "MMM d, yyyy h:mm a")}</TableCell>
-                        <TableCell>{transaction.description}</TableCell>
-                        <TableCell className={transaction.points > 0 ? "text-green-600" : "text-red-600"}>
-                          {transaction.points > 0 ? "+" : ""}{transaction.points}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
+            ) : memberHistory.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No transaction history found
               </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Points</TableHead>
+                    <TableHead>Description</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {memberHistory.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{new Date(transaction.timestamp).toLocaleString()}</TableCell>
+                      <TableCell className={transaction.points > 0 ? "text-green-600" : "text-red-600"}>
+                        {transaction.points > 0 ? `+${transaction.points}` : transaction.points}
+                      </TableCell>
+                      <TableCell>{transaction.description}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
-          </DialogContent>
-        </Dialog>
-      </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedMemberHistory(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Deduct Points Dialog */}
       <Dialog open={showDeductPoints} onOpenChange={setShowDeductPoints}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Deduct Points from {customerToDeduct?.name}</DialogTitle>
+            <DialogTitle>Deduct Points - {customerToDeduct?.name}</DialogTitle>
             <DialogDescription>
-              Current Points: {customerToDeduct?.points}
+              Remove points from this customer's account
             </DialogDescription>
           </DialogHeader>
 
           <Form {...deductPointsForm}>
-            <form onSubmit={deductPointsForm.handleSubmit((data) => {
-              if (!customerToDeduct) return;
-              deductPointsMutation.mutate({
-                customerId: customerToDeduct.id,
-                points: data.points,
-                reason: data.reason
-              });
-            })} className="space-y-4">
+            <form
+              onSubmit={deductPointsForm.handleSubmit((data) => {
+                if (!customerToDeduct) return;
+                deductPointsMutation.mutate({
+                  customerId: customerToDeduct.id,
+                  points: data.points,
+                  reason: data.reason
+                });
+              })}
+              className="space-y-4"
+            >
               <FormField
                 control={deductPointsForm.control}
                 name="points"
@@ -1381,12 +1257,17 @@ export default function AdminDashboard() {
                       <Input
                         type="number"
                         min="1"
-                        max={customerToDeduct?.points || 0}
+                        max={customerToDeduct?.points}
                         {...field}
                         onChange={(e) => field.onChange(e.target.valueAsNumber)}
                       />
                     </FormControl>
                     <FormMessage />
+                    {customerToDeduct && (
+                      <p className="text-xs text-muted-foreground">
+                        Current points: {customerToDeduct.points}
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />
@@ -1397,17 +1278,25 @@ export default function AdminDashboard() {
                   <FormItem>
                     <FormLabel>Reason</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter reason for deduction" {...field} />
+                      <Input {...field} placeholder="Reason for deducting points" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setShowDeductPoints(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeductPoints(false)}
+                  type="button"
+                >
                   Cancel
                 </Button>
-                <Button type="submit" variant="destructive" disabled={deductPointsMutation.isPending}>
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  disabled={deductPointsMutation.isPending}
+                >
                   Deduct Points
                 </Button>
               </DialogFooter>

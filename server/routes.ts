@@ -97,6 +97,13 @@ export async function registerRoutes(app: Express) {
     console.error("Error initializing verification codes:", error);
   }
 
+  // Initialize passwords for existing customers
+  try {
+    await storage.ensureCustomerPasswords();
+  } catch (error) {
+    console.error("Error initializing customer passwords:", error);
+  }
+
   // Serve static files from public directory
   // Add detailed logging for static file requests
   app.use((req, res, next) => {
@@ -215,6 +222,26 @@ export async function registerRoutes(app: Express) {
       res.status(200).json({ message: "Customer deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete customer" });
+    }
+  });
+
+  // Add password reset endpoint for admins
+  app.post("/api/admin/customers/:id/reset-password", requireAdmin, async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.id);
+      const { newPassword = "new123" } = req.body; // Default to 'new123' if not provided
+
+      const customer = await storage.updateCustomerPassword(customerId, newPassword);
+      res.status(200).json({ 
+        message: "Password reset successfully", 
+        customerId: customer.id,
+        mobile: customer.mobile
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        message: "Failed to reset password",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

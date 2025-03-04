@@ -15,6 +15,7 @@ export const customers = pgTable("customers", {
   points: integer("points").notNull().default(0),
   level: text("level").notNull().default("Bronze"),
   verificationCode: text("verification_code"), // New field for customer verification
+  password: text("password"), // New field for customer password
 });
 
 export const pointTransactions = pgTable("point_transactions", {
@@ -79,9 +80,11 @@ export const insertAdminSchema = createInsertSchema(admins).pick({
 export const insertCustomerSchema = createInsertSchema(customers).pick({
   name: true,
   mobile: true,
+  password: true,
 }).extend({
   mobile: z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid mobile number format"),
-  name: z.string().min(2, "Name must be at least 2 characters")
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters").default("new123")
 });
 
 export const insertPointTransactionSchema = createInsertSchema(pointTransactions).pick({

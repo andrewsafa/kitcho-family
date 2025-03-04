@@ -21,7 +21,8 @@ export default function CustomerSignup() {
     resolver: zodResolver(insertCustomerSchema),
     defaultValues: {
       name: "",
-      mobile: ""
+      mobile: "",
+      password: ""
     }
   });
 
@@ -96,6 +97,19 @@ export default function CustomerSignup() {
                     <FormLabel>Mobile Number</FormLabel>
                     <FormControl>
                       <Input placeholder="+1234567890" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Create a password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

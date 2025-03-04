@@ -10,14 +10,17 @@ export default function SignupScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
+  const [password, setPassword] = useState('');
   const [nameError, setNameError] = useState('');
   const [mobileError, setMobileError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [error, setError] = useState('');
 
   const validateForm = () => {
     let isValid = true;
     setNameError('');
     setMobileError('');
+    setPasswordError('');
 
     if (!name.trim()) {
       setNameError('Name is required');
@@ -32,11 +35,19 @@ export default function SignupScreen() {
       isValid = false;
     }
 
+    if (!password.trim()) {
+      setPasswordError('Password is required');
+      isValid = false;
+    } else if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      isValid = false;
+    }
+
     return isValid;
   };
 
   const signupMutation = useMutation({
-    mutationFn: async (data: { name: string; mobile: string }) => {
+    mutationFn: async (data: { name: string; mobile: string; password: string }) => {
       const apiUrl = Constants.expoConfig?.extra?.apiUrl;
       if (!apiUrl) {
         throw new Error('API URL not configured');
@@ -75,7 +86,7 @@ export default function SignupScreen() {
 
   const handleSignup = () => {
     if (!validateForm()) return;
-    signupMutation.mutate({ name, mobile });
+    signupMutation.mutate({ name, mobile, password });
   };
 
   return (
@@ -105,6 +116,16 @@ export default function SignupScreen() {
           style={styles.input}
         />
         {mobileError ? <Text style={styles.error}>{mobileError}</Text> : null}
+
+        <TextInput
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          error={!!passwordError}
+          style={styles.input}
+        />
+        {passwordError ? <Text style={styles.error}>{passwordError}</Text> : null}
 
         <Button
           mode="contained"
