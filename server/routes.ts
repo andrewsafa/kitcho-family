@@ -9,36 +9,84 @@ import multer from "multer";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs/promises";
-// Add regular fs for createReadStream
+// Add regular fs for createReadStream and directory operations
 import * as fsSync from "fs";
 import express from "express";
 
-// Create assets directory if it doesn't exist
-fs.mkdir("./public/assets", { recursive: true }).catch(console.error);
+// Create all necessary directories with proper error handling
+async function ensureDirectoriesExist() {
+  const dirs = [
+    "./public",
+    "./public/assets",
+    "./public/assets/benefits",
+    "./public/assets/offers",
+    "./store-assets"
+  ];
+
+  for (const dir of dirs) {
+    try {
+      if (!fsSync.existsSync(dir)) {
+        console.log(`Creating directory: ${dir}`);
+        await fs.mkdir(dir, { recursive: true });
+      }
+    } catch (error) {
+      console.error(`Error creating directory ${dir}:`, error);
+    }
+  }
+}
+
+// Ensure directories exist before configuring multer
+ensureDirectoriesExist().catch(err => {
+  console.error("Failed to create required directories:", err);
+});
 
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     // Use different destinations based on upload type
+    let uploadPath;
     if (req.path.includes('/benefits/image')) {
-      cb(null, "./public/assets/benefits");
+      uploadPath = "./public/assets/benefits";
     } else if (req.path.includes('/offers/image')) {
-      cb(null, "./public/assets/offers");
+      uploadPath = "./public/assets/offers";
     } else {
-      cb(null, "./store-assets");
+      uploadPath = "./store-assets";
     }
+
+    // Ensure the directory exists synchronously before saving file
+    if (!fsSync.existsSync(uploadPath)) {
+      try {
+        fsSync.mkdirSync(uploadPath, { recursive: true });
+        console.log(`Created directory: ${uploadPath}`);
+      } catch (err) {
+        console.error(`Error creating ${uploadPath}:`, err);
+        return cb(new Error(`Cannot create upload directory: ${err.message}`), "");
+      }
+    }
+
+    console.log(`Using upload path: ${uploadPath}`);
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
+    const uniqueFilename = `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`;
+    console.log(`Generated filename: ${uniqueFilename}`);
+    cb(null, uniqueFilename);
   }
 });
 
-const upload = multer({ storage: multerStorage });
+const upload = multer({ 
+  storage: multerStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    // Accept only images
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 export async function registerRoutes(app: Express) {
-  // Create required directories
-  await fs.mkdir("./public/assets/benefits", { recursive: true });
-  await fs.mkdir("./public/assets/offers", { recursive: true });
-
   // Set up authentication
   setupAuth(app);
 
@@ -115,24 +163,48 @@ export async function registerRoutes(app: Express) {
 
   // Upload image for benefit
   app.post("/api/benefits/image", requireAdmin, upload.single('image'), async (req, res) => {
+    console.log("Benefit image upload started");
+
     try {
       if (!req.file) {
+        console.error("No image file provided");
         return res.status(400).json({ message: "No image file provided" });
       }
 
+      console.log("File uploaded:", req.file.path);
+
+      // Create output directory if it doesn't exist
+      const publicDir = "./public";
+      const assetsDir = path.join(publicDir, "assets");
+      const benefitsDir = path.join(assetsDir, "benefits");
+
+      await fs.mkdir(benefitsDir, { recursive: true });
+      console.log("Directories created or verified");
+
       // Process image - resize to small size for benefits
-      const imagePath = `/assets/benefits/${path.basename(req.file.path)}`;
+      const outputFilename = path.basename(req.file.path);
+      const outputPath = path.join(benefitsDir, outputFilename);
+      const imagePath = `/assets/benefits/${outputFilename}`;
+
+      console.log("Processing image, output path:", outputPath);
+
       await sharp(req.file.path)
         .resize(100, 100) // Small size for benefits
-        .toFile(`./public${imagePath}`);
+        .toFile(outputPath);
+
+      console.log("Image processed successfully");
 
       // Remove the original uploaded file
       await fs.unlink(req.file.path);
+      console.log("Original file removed");
 
       res.json({ imagePath });
     } catch (error) {
       console.error("Error processing benefit image:", error);
-      res.status(500).json({ message: "Failed to process image" });
+      res.status(500).json({ 
+        message: "Failed to process image", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
   });
 
@@ -236,24 +308,48 @@ export async function registerRoutes(app: Express) {
 
   // Upload image for offer
   app.post("/api/offers/image", requireAdmin, upload.single('image'), async (req, res) => {
+    console.log("Offer image upload started");
+
     try {
       if (!req.file) {
+        console.error("No image file provided");
         return res.status(400).json({ message: "No image file provided" });
       }
 
+      console.log("File uploaded:", req.file.path);
+
+      // Create output directory if it doesn't exist
+      const publicDir = "./public";
+      const assetsDir = path.join(publicDir, "assets");
+      const offersDir = path.join(assetsDir, "offers");
+
+      await fs.mkdir(offersDir, { recursive: true });
+      console.log("Directories created or verified");
+
       // Process image - resize to medium size for offers
-      const imagePath = `/assets/offers/${path.basename(req.file.path)}`;
+      const outputFilename = path.basename(req.file.path);
+      const outputPath = path.join(offersDir, outputFilename);
+      const imagePath = `/assets/offers/${outputFilename}`;
+
+      console.log("Processing image, output path:", outputPath);
+
       await sharp(req.file.path)
         .resize(300, 200) // Medium size for offers
-        .toFile(`./public${imagePath}`);
+        .toFile(outputPath);
+
+      console.log("Image processed successfully");
 
       // Remove the original uploaded file
       await fs.unlink(req.file.path);
+      console.log("Original file removed");
 
       res.json({ imagePath });
     } catch (error) {
       console.error("Error processing offer image:", error);
-      res.status(500).json({ message: "Failed to process image" });
+      res.status(500).json({ 
+        message: "Failed to process image", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
   });
 
@@ -433,7 +529,7 @@ export async function registerRoutes(app: Express) {
       console.error('Store submission error:', error);
       res.status(500).json({
         message: "Failed to process store submission",
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   });
@@ -472,11 +568,11 @@ export async function registerRoutes(app: Express) {
         res.send(fileContent);
       } catch (error) {
         console.error(`Error reading file: ${filepath}`, error);
-        res.status(500).json({ message: `Failed to read backup file: ${error.message}` });
+        res.status(500).json({ message: `Failed to read backup file: ${error instanceof Error ? error.message : String(error)}` });
       }
     } catch (error) {
       console.error('Backup download error:', error);
-      res.status(500).json({ message: `Failed to download backup file: ${error.message}` });
+      res.status(500).json({ message: `Failed to download backup file: ${error instanceof Error ? error.message : String(error)}` });
     }
   });
 
