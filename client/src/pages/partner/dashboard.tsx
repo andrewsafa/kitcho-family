@@ -43,7 +43,12 @@ export default function PartnerDashboard() {
   // Get partner profile information
   const { data: partner, isLoading: isLoadingPartner } = useQuery({
     queryKey: ["/api/partner/me"],
-    onError: () => {
+    retry: false
+  });
+
+  // Handle authentication errors
+  useEffect(() => {
+    if (!isLoadingPartner && !partner) {
       toast({
         title: "Authentication Error",
         description: "Please log in to access the partner dashboard",
@@ -51,7 +56,7 @@ export default function PartnerDashboard() {
       });
       setLocation("/partner/login");
     }
-  });
+  }, [isLoadingPartner, partner, toast, setLocation]);
 
   // Log out mutation
   const logoutMutation = useMutation({
