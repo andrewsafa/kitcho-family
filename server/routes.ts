@@ -263,6 +263,43 @@ export async function registerRoutes(app: Express) {
     res.json(customer);
   });
 
+  app.post("/api/customers/login", async (req, res) => {
+    try {
+      const { mobile, password } = req.body;
+      if (!mobile) {
+        return res.status(400).json({ message: "Mobile number is required" });
+      }
+
+      const customer = await storage.getCustomerByMobile(mobile);
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+
+      // Verify password if it's provided and exists on the customer
+      if (password && customer.password) {
+        const passwordValid = await comparePasswords(password, customer.password);
+        if (!passwordValid) {
+          return res.status(401).json({ message: "Invalid credentials" });
+        }
+      }
+
+      // Update verification code
+      const updatedCustomer = await storage.updateCustomerVerificationCode(customer.id);
+
+      // Set session for customer (optional - if you want to track login state)
+      req.session.customerId = updatedCustomer.id;
+
+      // Return customer info with new verification code
+      res.json(updatedCustomer);
+    } catch (error) {
+      console.error("Customer login error:", error);
+      res.status(500).json({ 
+        message: "Failed to login customer", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   app.get("/api/customers", requireAdmin, async (_req, res) => {
     const customers = await storage.listCustomers();
     res.json(customers);

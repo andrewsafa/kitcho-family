@@ -114,6 +114,8 @@ export interface IStorage {
   updatePartnerStatus(id: number, active: boolean): Promise<Partner>;
   listPartners(): Promise<Partner[]>;
   deletePartner(id: number): Promise<void>;
+  // Update customer verification code
+  updateCustomerVerificationCode(id: number): Promise<Customer>;
 }
 
 function generateVerificationCode(length = 6): string {
@@ -598,6 +600,21 @@ export class PostgresStorage implements IStorage {
 
   async deletePartner(id: number): Promise<void> {
     await db.delete(partners).where(eq(partners.id, id));
+  }
+  async updateCustomerVerificationCode(id: number): Promise<Customer> {
+    const newCode = generateVerificationCode();
+
+    const [updatedCustomer] = await db
+      .update(customers)
+      .set({ verificationCode: newCode })
+      .where(eq(customers.id, id))
+      .returning();
+
+    if (!updatedCustomer) {
+      throw new Error("Customer not found");
+    }
+
+    return updatedCustomer;
   }
 }
 
