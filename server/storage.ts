@@ -27,8 +27,30 @@ import { db, pool } from "./db";
 import { eq, desc, and, gt, sql } from "drizzle-orm";
 import connectPg from 'connect-pg-simple';
 import session from 'express-session';
+import { scrypt, randomBytes, timingSafeEqual as cryptoTimingSafeEqual } from 'crypto';
+import { promisify } from 'util';
 
 const PostgresSessionStore = connectPg(session);
+
+// Convert callback-based scrypt to Promise-based
+const scryptAsync = promisify(scrypt);
+
+// Helper function to hash passwords
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const buf = await scryptAsync(password, salt, 64) as Buffer;
+  return `${buf.toString('hex')}.${salt}`;
+}
+
+// Helper function to verify passwords
+async function verifyPassword(storedPassword: string, suppliedPassword: string): Promise<boolean> {
+  const [hashedPassword, salt] = storedPassword.split('.');
+  const hashedBuf = Buffer.from(hashedPassword, 'hex');
+  const suppliedBuf = await scryptAsync(suppliedPassword, salt, 64) as Buffer;
+
+  // Use a constant-time comparison to prevent timing attacks
+  return cryptoTimingSafeEqual(hashedBuf, suppliedBuf);
+}
 
 export interface IStorage {
   // Keep existing interface methods
@@ -77,6 +99,10 @@ export interface IStorage {
   deleteStoreSubmission(id: number): Promise<void>;
   updateStoreSubmission(id: number, submission: Partial<InsertStoreSubmission>): Promise<StoreSubmission>;
   deleteLevelBenefit(id: number): Promise<void>;
+  // New method for updating customer passwords
+  updateCustomerPassword(id: number, newPassword: string): Promise<Customer>;
+  // Method to ensure all customers have passwords
+  ensureCustomerPasswords(): Promise<void>;
 }
 
 function generateVerificationCode(length = 6): string {
@@ -109,8 +135,12 @@ export class PostgresStorage implements IStorage {
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
+    // Hash the password before storing it
+    const hashedPassword = customer.password ? await hashPassword(customer.password) : await hashPassword("new123");
+
     const [result] = await db.insert(customers).values({
       ...customer,
+      password: hashedPassword,
       points: 0,
       level: "Bronze",
       verificationCode: generateVerificationCode() 
@@ -139,6 +169,47 @@ export class PostgresStorage implements IStorage {
     } catch (error) {
       console.error("Error ensuring verification codes:", error);
     }
+  }
+
+  // Add method to ensure all customers have passwords
+  async ensureCustomerPasswords(): Promise<void> {
+    try {
+      // Get all customers without passwords
+      const results = await db
+        .select()
+        .from(customers)
+        .where(sql`password IS NULL`);
+
+      // Generate and update passwords for these customers
+      for (const customer of results) {
+        const hashedPassword = await hashPassword("new123");
+        await db
+          .update(customers)
+          .set({ password: hashedPassword })
+          .where(eq(customers.id, customer.id));
+      }
+
+      console.log(`Updated passwords for ${results.length} customers`);
+    } catch (error) {
+      console.error("Error ensuring customer passwords:", error);
+    }
+  }
+
+  // Add method to update a customer's password
+  async updateCustomerPassword(id: number, newPassword: string): Promise<Customer> {
+    const hashedPassword = await hashPassword(newPassword);
+
+    const [updatedCustomer] = await db
+      .update(customers)
+      .set({ password: hashedPassword })
+      .where(eq(customers.id, id))
+      .returning();
+
+    if (!updatedCustomer) {
+      throw new Error("Customer not found");
+    }
+
+    return updatedCustomer;
   }
 
   async listCustomers(): Promise<Customer[]> {
@@ -324,7 +395,6 @@ export class PostgresStorage implements IStorage {
     return result;
   }
 
-  // Add new method to update special offers with image support
   async updateSpecialOffer(
     id: number, 
     updates: Partial<InsertSpecialOffer & { active: boolean }>
