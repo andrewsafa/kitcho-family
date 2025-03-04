@@ -13,5 +13,15 @@
     "timestamp": "2025-03-01T15:49:52.595Z",
     "filename": "backup-2025-03-01-15-49-52.json",
     "size": 361
+  },
+  {
+    "timestamp": "2025-03-04T11:59:26.160Z",
+    "filename": "backup-2025-03-04-11-59-25.json",
+    "size": 3742
+  },
+  {
+    "timestamp": "2025-03-04T12:00:06.972Z",
+    "filename": "backup-2025-03-04-12-00-06.json",
+    "size": 3742
   }
 ]

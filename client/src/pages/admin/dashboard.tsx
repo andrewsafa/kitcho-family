@@ -297,16 +297,28 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/backup/config"] });
+      toast({ title: "Backup configuration updated" });
+    },
+    onError: (error) => {
+      toast({ variant: "destructive", title: "Error updating backup configuration", description: error.message });
     }
   });
 
   const runBackupMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/backup/run");
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to run backup");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/backup/history"] });
+      toast({ title: "Backup created successfully" });
+    },
+    onError: (error) => {
+      toast({ variant: "destructive", title: "Error creating backup", description: error.message });
     }
   });
 
@@ -371,7 +383,6 @@ export default function AdminDashboard() {
   const handleBackup = async () => {
     try {
       runBackupMutation.mutate();
-      toast({ title: "Backup initiated successfully" });
     } catch (error) {
       toast({ variant: "destructive", title: "Error initiating backup", description: (error as Error).message });
     }
@@ -384,19 +395,27 @@ export default function AdminDashboard() {
     fileInput.onchange = async (event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (file) {
-        const formData = new FormData();
-        formData.append('backup', file);
-        try {
-          const res = await apiRequest("POST", "/api/restore", formData);
-          if (res.ok) {
-            toast({ title: "Restore initiated successfully" });
-            window.location.reload();
-          } else {
-            toast({ variant: "destructive", title: "Error restoring backup", description: await res.text() });
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const content = e.target?.result;
+          if (typeof content === 'string') {
+            try {
+              const data = JSON.parse(content);
+              const res = await apiRequest("POST", "/api/restore", data);
+              if (res.ok) {
+                toast({ title: "Restore completed successfully" });
+                // Refresh data
+                queryClient.invalidateQueries();
+              } else {
+                const errorText = await res.text();
+                toast({ variant: "destructive", title: "Error restoring data", description: errorText });
+              }
+            } catch (error) {
+              toast({ variant: "destructive", title: "Error processing backup file", description: (error as Error).message });
+            }
           }
-        } catch (error) {
-          toast({ variant: "destructive", title: "Error restoring backup", description: (error as Error).message });
-        }
+        };
+        reader.readAsText(file);
       }
     };
     fileInput.click();
@@ -875,18 +894,14 @@ export default function AdminDashboard() {
                         {getLevelBenefits(selectedLevel).map(benefit => (
                           <div key={benefit.id} className="border p-4 rounded-lg">
                             <div className="flex justify-between">
-                              <div className="font-medium">
-                                {benefit.benefit}
-                              </div>
+                              <p>{benefit.benefit}</p>
                               <div className="flex items-center gap-2">
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  onClick={() => {
-                                    if (window.confirm("Are you sure you want to delete this benefit?")) {
-                                      deleteBenefitMutation.mutate(benefit.id);
-                                    }
-                                  }}
+                                  onClick={() =>
+                                    deleteBenefitMutation.mutate(benefit.id)
+                                  }
                                 >
                                   Delete
                                 </Button>
@@ -894,10 +909,7 @@ export default function AdminDashboard() {
                                 <Switch
                                   checked={benefit.active}
                                   onCheckedChange={(checked) => {
-                                    updateBenefitMutation.mutate({
-                                      id: benefit.id,
-                                      active: checked
-                                    });
+                                    updateBenefitMutation.mutate({ id: benefit.id, active: checked });
                                   }}
                                 />
                               </div>
@@ -991,19 +1003,32 @@ export default function AdminDashboard() {
                           <TableHead>Date</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>File</TableHead>
+                          <TableHead>Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {backupHistory.map((backup, index) => (
                           <TableRow key={index}>
                             <TableCell>{format(new Date(backup.timestamp), "MMM d, yyyy h:mm a")}</TableCell>
-                            <TableCell>{backup.success ? "Success" : "Failed"}</TableCell>
+                            <TableCell>{backup.success !== false ? "Success" : "Failed"}</TableCell>
                             <TableCell>{backup.filename || "N/A"}</TableCell>
+                            <TableCell>
+                              {backup.filename && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => window.open(`/api/backup/download/${backup.filename}`, '_blank')}
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download
+                                </Button>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))}
                         {backupHistory.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                            <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
                               No backup history available
                             </TableCell>
                           </TableRow>
@@ -1016,6 +1041,90 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Backup Settings Dialog */}
+        <Dialog open={showBackupSettings} onOpenChange={setShowBackupSettings}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Backup Configuration</DialogTitle>
+              <DialogDescription>
+                Configure automatic backup settings
+              </DialogDescription>
+            </DialogHeader>
+            {backupConfig && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Backup Frequency (cron)</label>
+                    <Input
+                      value={backupConfig.frequency}
+                      onChange={(e) =>
+                        updateBackupConfigMutation.mutate({
+                          ...backupConfig,
+                          frequency: e.target.value
+                        })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">e.g. "0 0 * * *" for daily at midnight</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Max Backups to Keep</label>
+                    <Input
+                      type="number"
+                      value={backupConfig.maxBackups}
+                      onChange={(e) =>
+                        updateBackupConfigMutation.mutate({
+                          ...backupConfig,
+                          maxBackups: parseInt(e.target.value)
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Email To (Optional)</label>
+                    <Input
+                      value={backupConfig.emailTo || ""}
+                      onChange={(e) =>
+                        updateBackupConfigMutation.mutate({
+                          ...backupConfig,
+                          emailTo: e.target.value || null
+                        })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">Email to send backup files to</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="enabled"
+                    checked={backupConfig.enabled}
+                    onCheckedChange={(checked) =>
+                      updateBackupConfigMutation.mutate({
+                        ...backupConfig,
+                        enabled: !!checked
+                      })
+                    }
+                  />
+                  <label
+                    htmlFor="enabled"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Enable Automatic Backups
+                  </label>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button onClick={() => setShowBackupSettings(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Transaction History Dialog */}
         <Dialog open={!!selectedMemberHistory} onOpenChange={(open) => !open && setSelectedMemberHistory(null)}>
@@ -1069,12 +1178,6 @@ export default function AdminDashboard() {
                 No transaction history found
               </div>
             )}
-
-            <DialogFooter>
-              <Button onClick={() => setSelectedMemberHistory(null)}>
-                Close
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
