@@ -38,6 +38,20 @@ export function LoyaltyCard({ customer }: LoyaltyCardProps) {
           <Icon className="h-12 w-12 text-primary" />
         </div>
 
+        {customer.verificationCode && (
+          <div className="mb-4 p-3 border border-primary/20 rounded-md bg-primary/5">
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-muted-foreground">Verification Code:</span>
+              <span className="text-xl font-bold tracking-wider text-primary">
+                {customer.verificationCode}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Show this code to partners when claiming rewards or discounts
+            </p>
+          </div>
+        )}
+
         <div className="space-y-4">
           <div>
             <div className="flex justify-between mb-2">
