@@ -51,9 +51,36 @@ export default function CustomerSignup() {
     }
   });
 
+  // New mutation for customer login
+  const loginMutation = useMutation({
+    mutationFn: async (data: { mobile: string, password?: string }) => {
+      const res = await apiRequest("POST", "/api/customers/login", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Welcome back!",
+        description: "Your verification code has been updated."
+      });
+      navigate(`/dashboard/${data.mobile}`);
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message
+      });
+    }
+  });
+
   const onSubmit = (data: InsertCustomer) => {
     if (isExistingCustomer) {
-      navigate(`/dashboard/${data.mobile}`);
+      // Instead of direct navigation, call the login endpoint
+      // This will regenerate the verification code
+      loginMutation.mutate({ 
+        mobile: data.mobile,
+        password: data.password 
+      });
     } else {
       signupMutation.mutate(data);
     }
@@ -118,9 +145,12 @@ export default function CustomerSignup() {
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={signupMutation.isPending}
+                disabled={signupMutation.isPending || loginMutation.isPending}
               >
-                {isExistingCustomer ? "View Dashboard" : "Join Kitcho Family"}
+                {isExistingCustomer ? 
+                  (loginMutation.isPending ? "Logging in..." : "Login to Kitcho Family") : 
+                  (signupMutation.isPending ? "Joining..." : "Join Kitcho Family")
+                }
               </Button>
             </form>
           </Form>
