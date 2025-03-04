@@ -91,7 +91,82 @@ export async function registerRoutes(app: Express) {
   setupAuth(app);
 
   // Serve static files from public directory
+  // Add detailed logging for static file requests
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/assets/')) {
+      console.log(`Static file request: ${req.path}`);
+    }
+    next();
+  });
+
   app.use('/assets', express.static('public/assets'));
+
+  // Diagnostic route for testing image serving
+  app.get("/api/test-image-paths", async (_req, res) => {
+    try {
+      // Create a test image if it doesn't exist
+      const testImagePath = "./public/assets/test-image.png";
+      if (!fsSync.existsSync(testImagePath)) {
+        // Create a simple colored square as a test image
+        await sharp({
+          create: {
+            width: 100,
+            height: 100,
+            channels: 4,
+            background: { r: 255, g: 0, b: 0, alpha: 1 }
+          }
+        })
+        .png()
+        .toFile(testImagePath);
+        console.log("Created test image at:", testImagePath);
+      }
+
+      // Log all existing assets directories and their contents
+      const benefitsDir = "./public/assets/benefits";
+      const offersDir = "./public/assets/offers";
+
+      console.log("Assets directory structure:");
+      if (fsSync.existsSync(benefitsDir)) {
+        const benefitFiles = fsSync.readdirSync(benefitsDir);
+        console.log(`Benefits directory (${benefitsDir}):`, benefitFiles);
+      } else {
+        console.log("Benefits directory does not exist");
+      }
+
+      if (fsSync.existsSync(offersDir)) {
+        const offerFiles = fsSync.readdirSync(offersDir);
+        console.log(`Offers directory (${offersDir}):`, offerFiles);
+      } else {
+        console.log("Offers directory does not exist");
+      }
+
+      res.json({
+        message: "Image diagnostics",
+        testImageUrl: "/assets/test-image.png",
+        diagnosticPageUrl: "/test.html",
+        assetsDirectory: {
+          path: "public/assets",
+          exists: fsSync.existsSync("./public/assets"),
+        },
+        benefitsDirectory: {
+          path: "public/assets/benefits",
+          exists: fsSync.existsSync(benefitsDir),
+          files: fsSync.existsSync(benefitsDir) ? fsSync.readdirSync(benefitsDir) : []
+        },
+        offersDirectory: {
+          path: "public/assets/offers",
+          exists: fsSync.existsSync(offersDir),
+          files: fsSync.existsSync(offersDir) ? fsSync.readdirSync(offersDir) : []
+        }
+      });
+    } catch (error) {
+      console.error("Error in image diagnostics:", error);
+      res.status(500).json({
+        message: "Error generating diagnostics",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   // Customer routes
   app.post("/api/customers", async (req, res) => {

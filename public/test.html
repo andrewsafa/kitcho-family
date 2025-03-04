@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image Test</title>
+</head>
+<body>
+  <h1>Image Test</h1>
+  <p>If you see an image below, static file serving is working:</p>
+  <img src="/assets/test-image.png" alt="Test image" style="max-width: 200px; border: 1px solid red;">
+  <p>Current time: <span id="time"></span></p>
+  
+  <script>
+    document.getElementById('time').textContent = new Date().toISOString();
+  </script>
+</body>
+</html>
