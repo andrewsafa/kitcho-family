@@ -30,7 +30,15 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, LogOut, User, CreditCard } from "lucide-react";
+import { Search, LogOut, User, CreditCard, Crown, Star, Award, Trophy } from "lucide-react";
+
+// Define the level icons mapping
+const LEVEL_ICONS = {
+  Bronze: Award,
+  Silver: Star,
+  Gold: Crown,
+  Diamond: Trophy
+};
 
 export default function PartnerDashboard() {
   const { toast } = useToast();
@@ -39,6 +47,7 @@ export default function PartnerDashboard() {
   const [verificationCode, setVerificationCode] = useState("");
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
 
   // Get partner profile information
   const { data: partner, isLoading: isLoadingPartner } = useQuery({
@@ -91,6 +100,7 @@ export default function PartnerDashboard() {
     onSuccess: (data) => {
       setCustomer(data);
       setShowVerificationDialog(true);
+      setVerificationSuccess(false); // Reset verification status
     },
     onError: (error) => {
       toast({
@@ -136,19 +146,21 @@ export default function PartnerDashboard() {
     }
 
     // Verification successful
+    setVerificationSuccess(true);
+
     toast({
       title: "Verification successful",
-      description: `Customer ${customer.name} verified successfully`
+      description: `Customer verified successfully`
     });
+  };
 
-    // Close dialog and reset form
+  // Handle closing verification dialog
+  const handleCloseVerification = () => {
     setShowVerificationDialog(false);
     setVerificationCode("");
-    setMobileNumber("");
+    setVerificationSuccess(false);
     setCustomer(null);
-
-    // Navigate to customer dashboard
-    setLocation(`/dashboard/${customer.mobile}`);
+    setMobileNumber("");
   };
 
   // Handle logout
@@ -165,6 +177,12 @@ export default function PartnerDashboard() {
       </div>
     );
   }
+
+  // Get the appropriate icon component for the customer's level
+  const getLevelIcon = (level: string) => {
+    const Icon = LEVEL_ICONS[level as keyof typeof LEVEL_ICONS] || Award;
+    return <Icon className="h-12 w-12 text-primary" />;
+  };
 
   return (
     <div className="container mx-auto py-10">
@@ -195,7 +213,7 @@ export default function PartnerDashboard() {
             <CardHeader>
               <CardTitle>Customer Verification</CardTitle>
               <CardDescription>
-                Enter a customer's mobile number to verify their identity
+                Enter a customer's mobile number and verify their identity using their unique verification code
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -243,39 +261,58 @@ export default function PartnerDashboard() {
             </DialogDescription>
           </DialogHeader>
 
-          {customer && (
+          {customer && !verificationSuccess && (
             <div className="space-y-4">
-              <div className="border rounded-md p-4 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="text-sm font-medium">Name:</div>
-                  <div>{customer.name}</div>
-                  <div className="text-sm font-medium">Mobile:</div>
-                  <div>{customer.mobile}</div>
-                  <div className="text-sm font-medium">Loyalty Level:</div>
-                  <div className="font-semibold">{customer.level}</div>
-                  <div className="text-sm font-medium">Points:</div>
-                  <div className="font-semibold">{customer.points.toLocaleString()}</div>
+              <div className="border rounded-md p-4">
+                <p className="text-center text-sm mb-1">Please ask the customer to provide their verification code</p>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Verification Code</label>
+                  <Input
+                    placeholder="Enter verification code"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                  />
                 </div>
               </div>
+            </div>
+          )}
 
-              <div>
-                <label className="block text-sm font-medium mb-1">Verification Code</label>
-                <Input
-                  placeholder="Enter verification code"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                />
+          {customer && verificationSuccess && (
+            <div className="space-y-4">
+              <div className="border rounded-md p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Verification Successful</h3>
+                    <p className="text-muted-foreground">Customer identity verified</p>
+                  </div>
+                  {getLevelIcon(customer.level)}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-primary/5 rounded-md">
+                    <span className="font-semibold">Loyalty Level:</span>
+                    <span className="text-lg font-bold text-primary">{customer.level}</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowVerificationDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmVerification}>
-              Verify
-            </Button>
+            {!verificationSuccess ? (
+              <>
+                <Button variant="outline" onClick={handleCloseVerification}>
+                  Cancel
+                </Button>
+                <Button onClick={handleConfirmVerification}>
+                  Verify
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleCloseVerification}>
+                Close
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
