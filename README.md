@@ -1,177 +1,146 @@
 # Kitcho Family Loyalty Program
 
-## Web Application
-The web version is currently running and can be accessed at your deployed Replit URL.
+A comprehensive loyalty program management platform enabling secure partner authentication and customer verification through a streamlined ecosystem.
 
-## Mobile Application Development
-To develop the mobile version:
+## Features
 
-1. Create a new React Native project using Expo:
+- Customer registration and loyalty points tracking
+- Dynamic verification code generation for enhanced security
+- Partner authentication system
+- Administrative dashboard for program management
+- Special offers and event management
+- Loyalty level benefits administration
+- Points transaction history
+- Mobile-responsive design
+
+## Tech Stack
+
+- Frontend: React.js with TypeScript
+- Backend: Node.js + Express
+- Database: PostgreSQL with Drizzle ORM
+- UI Components: shadcn/ui
+- State Management: TanStack Query (React Query)
+- Styling: Tailwind CSS
+- Form Handling: React Hook Form + Zod validation
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or higher
+- PostgreSQL database
+- Git
+
+### Installation
+
+1. Clone the repository
 ```bash
-npx create-expo-app KitchoFamilyMobile
-cd KitchoFamilyMobile
+git clone https://github.com/YOUR_USERNAME/kitcho-family.git
+cd kitcho-family
 ```
 
-2. Install required dependencies:
+2. Install dependencies
 ```bash
-npx expo install react-native-paper @react-navigation/native @react-navigation/native-stack react-native-screens react-native-safe-area-context @react-native-async-storage/async-storage
+npm install
 ```
 
-3. Copy the shared types and schemas:
-- Copy `shared/schema.ts` to your mobile project
-- Update API endpoints to point to your deployed web application
-
-4. Development:
-```bash
-npx expo start
+3. Set up environment variables in `.env`:
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/kitcho_family
+NODE_ENV=development
+SESSION_SECRET=your-secure-session-secret
 ```
 
-### Android Development Setup Guide
-
-#### 1. System Requirements
-- Windows/Mac/Linux operating system
-- Minimum 8GB RAM (16GB recommended)
-- At least 10GB free disk space
-
-#### 2. Install Android Studio
-1. Download Android Studio from [developer.android.com/studio](https://developer.android.com/studio)
-2. Run the installer and follow these steps:
-   - Choose "Custom" installation
-   - Select all the following components:
-     - Android SDK
-     - Android SDK Platform
-     - Performance (Intel HAXM)
-     - Android Virtual Device
-   - Choose installation location (remember this path)
-
-#### 3. Configure Environment Variables
-1. Set ANDROID_HOME environment variable:
-   - Windows:
-     ```
-     setx ANDROID_HOME "%LOCALAPPDATA%\Android\Sdk"
-     ```
-   - macOS/Linux:
-     ```
-     export ANDROID_HOME=$HOME/Android/Sdk
-     ```
-
-2. Add platform-tools to PATH:
-   - Windows: Add `%LOCALAPPDATA%\Android\Sdk\platform-tools`
-   - macOS/Linux: Add `$HOME/Android/Sdk/platform-tools`
-
-#### 4. Create Android Virtual Device (AVD)
-1. Open Android Studio
-2. Click "More Actions" > "Virtual Device Manager"
-3. Click "Create Device"
-4. Select a phone definition (e.g., Pixel 4)
-5. Download and select a system image (recommend API 34)
-6. Complete AVD creation
-
-#### 5. Testing Your Setup
-1. Start the Android emulator
-2. Run the following commands:
+4. Start the development server
 ```bash
-adb devices  # Should list your emulator
-npx expo start --android  # Start your app in the emulator
+npm run dev
 ```
 
-### Google Play Store Preparation
+The application will be available at `http://localhost:5000`
 
-#### 1. Required Assets
-- App Icon (512x512 PNG)
-- Feature Graphic (1024x500 PNG)
-- Screenshots (minimum 2):
-  - Phone: 16:9 aspect ratio
-  - Tablet: 16:10 aspect ratio
-- App Bundle (generated via `eas build`)
+## Environment Variables
 
-#### 2. Store Listing Requirements
-- App Title (50 characters)
-- Short Description (80 characters)
-- Full Description (4000 characters)
-- App Category
-- Content Rating
-- Privacy Policy URL
-- Contact Information
+- `DATABASE_URL`: PostgreSQL connection string
+- `NODE_ENV`: Application environment (development/production)
+- `SESSION_SECRET`: Secret for session management
+- `PORT`: Server port (defaults to 5000)
 
-#### 3. Technical Requirements
-- Target API Level 34
-- App Bundle format
-- App signing by Google Play
-- Data safety disclosure
+## Project Structure
 
-#### 4. Publishing Steps
-1. Create Google Play Developer account
-2. Set up app signing
-3. Create app in Play Console
-4. Complete store listing
-5. Upload app bundle
-6. Submit for review
+```
+kitcho-family/
+├── client/             # Frontend React application
+│   ├── src/
+│   │   ├── components/ # Reusable React components
+│   │   ├── hooks/     # Custom React hooks
+│   │   ├── lib/       # Utility functions
+│   │   └── pages/     # Page components
+├── server/            # Backend Express server
+│   ├── routes.ts     # API routes
+│   ├── storage.ts    # Database operations
+│   └── auth.ts       # Authentication logic
+├── shared/           # Shared types and schemas
+└── public/           # Static assets
+```
 
-### Important Notes:
-- Test thoroughly on both platforms before submission
-- Prepare marketing materials (screenshots, descriptions)
-- Plan for app updates and maintenance
-- Consider implementing analytics for tracking user engagement
+## Key Features
 
-### App Store Assets Checklist
-1. Required Images:
-   - App Icon (multiple sizes)
-   - Screenshots for different devices
-   - Feature graphic (Play Store)
-   - Promotional graphics
+### Customer Management
+- Registration and profile management
+- Points tracking and transaction history
+- Loyalty level progression
+- Verification code system
 
-2. Text Content:
-   - App name
-   - Short description
-   - Full description
-   - Keywords
-   - Privacy policy URL
-   - Support URL
+### Partner Portal
+- Secure authentication
+- Customer verification
+- Transaction processing
+- Status checking
 
-3. Media:
-   - Promotional video (optional)
-   - Preview video (optional)
+### Administrative Dashboard
+- Customer management
+- Partner management
+- Special offers creation
+- Level benefits configuration
+- System backup and restore
 
-4. Technical Information:
-   - Content rating questionnaire
-   - Export compliance
-   - Data privacy declarations
+## Deployment
 
-### Mobile Features
-- Customer registration and login
-- View loyalty points and level
-- Receive push notifications for:
-  - Points updates
-  - Special events
-  - Special offers
-- View transaction history
-- Access level benefits
+### GitHub Deployment
+1. Create a new repository on GitHub
+2. Add the remote repository:
+```bash
+git remote add origin https://github.com/YOUR_USERNAME/kitcho-family.git
+```
+3. Push your code:
+```bash
+git push -u origin main
+```
 
-### Publishing
-1. iOS App Store Requirements:
-- Apple Developer Account ($99/year)
-- XCode for building iOS version
-- App Store Connect setup
+### Production Deployment Options
 
-2. Google Play Store Requirements:
-- Google Play Developer Account ($25 one-time)
-- Android Studio for building Android version
-- Google Play Console setup
+#### Azure Web App Service
+- Follow Azure deployment guide in `docs/azure-deployment.md`
+- Configure environment variables in Azure App Service
+- Set up Azure Database for PostgreSQL
 
-### Steps to Publish
+#### AWS Elastic Beanstalk
+- Follow AWS deployment guide in `docs/aws-deployment.md`
+- Configure environment variables in Elastic Beanstalk
+- Set up AWS RDS for PostgreSQL
 
-#### iOS App Store:
-1. Configure app settings in Xcode:
-   - Bundle identifier
-   - Version number
-   - Required device capabilities
-2. Create certificates and provisioning profiles
-3. Build and archive app
-4. Submit through App Store Connect
+## Contributing
 
-#### Google Play Store:
-1. Generate signed APK/Android App Bundle
-2. Create Play Store listing
-3. Submit app for review
-4. Monitor release status
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details
+
+## Support
+
+For support, email support@kitchofamily.com or raise an issue in the GitHub repository.

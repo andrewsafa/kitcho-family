@@ -1,6 +1,59 @@
+# Dependencies
 node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Production
 dist
+build
+
+# Misc
 .DS_Store
-server/public
-vite.config.ts.*
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Database
+*.sqlite
+*.db
+
+# Replit specific
+.replit
+.breakpoints
+replit.nix
+.cache/
+.config/
+.upm/
+.local/
+
+# Deployment
 *.tar.gz
+generated-icon.png
+
+# Assets
+server/public/assets/*
+!server/public/assets/.gitkeep
+store-assets/*
+!store-assets/.gitkeep
