@@ -120,6 +120,25 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Add backup endpoint
+  app.get("/api/backup", requireAdmin, async (_req, res) => {
+    try {
+      const data = await storage.exportData();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.post("/api/restore", requireAdmin, async (req, res) => {
+    try {
+      await storage.importData(req.body);
+      res.json({ message: "Data restored successfully" });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   // Enhanced health check endpoint with improved error handling
   app.get("/health", async (_req, res) => {
     try {

@@ -415,9 +415,29 @@ export default function AdminDashboard() {
 
   const handleBackup = async () => {
     try {
-      runBackupMutation.mutate();
+      const res = await apiRequest("GET", "/api/backup");
+      if (!res.ok) {
+        throw new Error("Failed to create backup");
+      }
+
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kitcho-family-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({ title: "Backup created successfully" });
     } catch (error) {
-      toast({ variant: "destructive", title: "Error initiating backup", description: (error as Error).message });
+      toast({ 
+        variant: "destructive", 
+        title: "Error creating backup", 
+        description: error instanceof Error ? error.message : String(error)
+      });
     }
   };
 
