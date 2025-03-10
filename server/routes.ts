@@ -125,6 +125,16 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Customer listing endpoint
+  app.get("/api/customers", requireAdmin, async (_req, res) => {
+    try {
+      const customers = await storage.listCustomers();
+      res.json(customers);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   // Points transaction routes
   app.post("/api/points", requireAdmin, async (req, res) => {
     try {
