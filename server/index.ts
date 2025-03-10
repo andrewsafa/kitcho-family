@@ -10,10 +10,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Enhanced startup logging
-log("Starting Kitcho Family server...");
-log(`Environment: ${process.env.NODE_ENV}`);
-log(`Database URL configured: ${!!process.env.DATABASE_URL}`);
-log(`Port configured: ${process.env.PORT || '5000 (default)'}`);
+log("=== Starting Kitcho Family Server ===");
+log(`Environment Variables Status:`);
+log(`- NODE_ENV: ${process.env.NODE_ENV}`);
+log(`- PORT: ${process.env.PORT || '5000 (default)'}`);
+log(`- Database URL: ${process.env.DATABASE_URL ? 'Configured' : 'Missing'}`);
+log(`- Session Secret: ${process.env.SESSION_SECRET ? 'Configured' : 'Missing'}`);
+log("===================================");
 
 // Add detailed request logging
 app.use((req, res, next) => {
@@ -64,13 +67,22 @@ process.on('unhandledRejection', (reason, promise) => {
 
 (async () => {
   try {
-    log("Initializing database connection...");
+    log("=== Initializing Server Components ===");
+
+    // Test database connection first
+    log("Testing database connection...");
+    const dbStatus = await storage.testConnection();
+    if (!dbStatus) {
+      throw new Error("Database connection test failed");
+    }
+    log("Database connection test successful");
+
     // Check if admin exists before creating
+    log("Checking admin user...");
     const existingAdmin = await storage.getAdminByUsername("admin");
 
     if (!existingAdmin) {
       log("Creating initial admin user...");
-      // Create initial admin user only if it doesn't exist
       const scryptAsync = promisify(scrypt);
       const salt = randomBytes(16).toString("hex");
       const passwordBuf = (await scryptAsync("admin123", salt, 64)) as Buffer;
@@ -121,6 +133,7 @@ process.on('unhandledRejection', (reason, promise) => {
       log(`Environment: ${app.get('env')}`);
       log(`Listening on: http://${host}:${port}`);
       log(`Database connection: ${process.env.DATABASE_URL ? 'Configured' : 'Missing'}`);
+      log(`Session secret: ${process.env.SESSION_SECRET ? 'Configured' : 'Missing'}`);
       log("================================");
     });
   } catch (error) {
