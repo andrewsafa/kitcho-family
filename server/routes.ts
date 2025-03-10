@@ -10,35 +10,24 @@ export async function registerRoutes(app: Express) {
   // Set up authentication first
   setupAuth(app);
 
-  // Basic health check endpoint
+  // Enhanced health check endpoint with improved error handling
   app.get("/health", async (_req, res) => {
     try {
-      await storage.listCustomers();
+      // Test database connection
+      await storage.testConnection();
+
       res.json({ 
         status: "ok",
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV,
-        database: !!process.env.DATABASE_URL,
-        readiness: "ready"
+        time: new Date().toISOString()
       });
     } catch (error) {
-      res.status(503).json({
+      log(`Health check failed: ${error instanceof Error ? error.message : String(error)}`);
+      res.status(503).json({ 
         status: "error",
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : String(error),
-        readiness: "not_ready"
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   });
 
-  // Initialize verification codes and passwords for existing customers
-  try {
-    await storage.ensureVerificationCodes();
-    await storage.ensureCustomerPasswords();
-  } catch (error) {
-    log("Error initializing customer data:", error);
-  }
-
-  // Return the HTTP server
   return createServer(app);
 }
