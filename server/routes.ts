@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { setupAuth, requireAdmin } from "./auth";
+import { setupAuth, requireAdmin, comparePasswords } from "./auth";
 import { log } from "./vite";
 import { 
   insertCustomerSchema,
@@ -10,12 +10,93 @@ import {
   insertSpecialEventSchema,
   insertSpecialOfferSchema
 } from "@shared/schema";
+import session from "express-session";
+
+// Add type definition for customer session
+declare module "express-session" {
+  interface SessionData {
+    customerId?: number;
+    adminId?: number;
+  }
+}
 
 export async function registerRoutes(app: Express) {
   log("Setting up routes...");
 
   // Set up authentication first
   setupAuth(app);
+
+  // Add customer authentication routes
+  app.post("/api/customer/login", async (req, res) => {
+    try {
+      const { mobile, password } = req.body;
+
+      // Input validation
+      if (!mobile || !password) {
+        return res.status(400).json({ error: "Mobile and password are required" });
+      }
+
+      // Find customer
+      const customer = await storage.getCustomerByMobile(mobile);
+      if (!customer) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Verify password
+      const passwordValid = await comparePasswords(password, customer.password);
+      if (!passwordValid) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Set session
+      req.session.customerId = customer.id;
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      res.json({
+        id: customer.id,
+        name: customer.name,
+        mobile: customer.mobile,
+        points: customer.points,
+        level: customer.level
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/api/customer/me", async (req, res) => {
+    try {
+      if (!req.session.customerId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const customer = await storage.getCustomer(req.session.customerId);
+      if (!customer) {
+        return res.status(401).json({ error: "Customer not found" });
+      }
+
+      res.json({
+        id: customer.id,
+        name: customer.name,
+        mobile: customer.mobile,
+        points: customer.points,
+        level: customer.level
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.post("/api/customer/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ success: true });
+    });
+  });
 
   // Customer routes
   app.post("/api/customers", async (req, res) => {
@@ -145,13 +226,13 @@ export async function registerRoutes(app: Express) {
       // Test database connection
       await storage.testConnection();
 
-      res.json({ 
+      res.json({
         status: "ok",
         time: new Date().toISOString()
       });
     } catch (error) {
       log(`Health check failed: ${error instanceof Error ? error.message : String(error)}`);
-      res.status(503).json({ 
+      res.status(503).json({
         status: "error",
         error: error instanceof Error ? error.message : String(error)
       });
