@@ -396,14 +396,39 @@ export default function AdminDashboard() {
     }
   });
 
+  // Delete customer mutation
+  const deleteCustomerMutation = useMutation({
+    mutationFn: async (customerId: number) => {
+      const res = await apiRequest("DELETE", `/api/customers/${customerId}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete customer");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Customer deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error deleting customer",
+        description: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   const handleDeleteCustomer = async (customer: Customer) => {
     if (window.confirm(`Are you sure you want to delete ${customer.name}?`)) {
       try {
-        await apiRequest("DELETE", `/api/customers/${customer.id}`);
-        queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-        toast({ title: `${customer.name} deleted successfully` });
+        deleteCustomerMutation.mutate(customer.id);
       } catch (error) {
-        toast({ variant: "destructive", title: "Error deleting customer", description: (error as Error).message });
+        toast({ 
+          variant: "destructive", 
+          title: "Error deleting customer", 
+          description: error instanceof Error ? error.message : String(error) 
+        });
       }
     }
   };
