@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { CreditCard, Gift, Award, Cog, Users, Key } from "lucide-react";
+import { CreditCard, Gift, Award, Cog, Users, Key, Download, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -956,7 +956,8 @@ export default function AdminDashboard() {
                                   updateBenefitMutation.mutate({
                                     id: benefit.id,
                                     active: checked
-                                  });                                }}
+                                  });
+                                }}
                               />
                             </TableCell>
                             <TableCell>
