@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
 
 const app = express();
 app.use(express.json());
@@ -11,6 +13,30 @@ log("=== Starting Server ===");
 
 (async () => {
   try {
+    // Test database connection first
+    log("Testing database connection...");
+    const dbStatus = await storage.testConnection();
+    if (!dbStatus) {
+      throw new Error("Database connection test failed");
+    }
+    log("Database connection successful");
+
+    // Check and create admin if needed
+    const existingAdmin = await storage.getAdminByUsername("admin");
+    if (!existingAdmin) {
+      log("Creating initial admin user...");
+      const scryptAsync = promisify(scrypt);
+      const salt = randomBytes(16).toString("hex");
+      const passwordBuf = (await scryptAsync("admin123", salt, 64)) as Buffer;
+      const hashedPassword = `${passwordBuf.toString("hex")}.${salt}`;
+
+      await storage.createAdmin({
+        username: "admin",
+        password: hashedPassword
+      });
+      log("Initial admin user created");
+    }
+
     // Basic server setup
     const server = await registerRoutes(app);
 
