@@ -40,7 +40,11 @@ export default function CustomerSignup() {
         title: "Welcome to Kitcho Family!",
         description: "Your account has been created successfully."
       });
-      navigate(`/dashboard/${data.mobile}`);
+      // After successful signup, attempt automatic login
+      loginMutation.mutate({
+        mobile: data.mobile,
+        password: form.getValues("password")
+      });
     },
     onError: (error) => {
       if (error.message.includes("already exists")) {

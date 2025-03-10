@@ -26,18 +26,20 @@ import connectPg from 'connect-pg-simple';
 import session from 'express-session';
 import { scrypt, randomBytes, timingSafeEqual as cryptoTimingSafeEqual } from 'crypto';
 import { promisify } from 'util';
+import { hashPassword } from "./auth";
+import { log } from "./vite";
 
 const PostgresSessionStore = connectPg(session);
 
 // Convert callback-based scrypt to Promise-based
 const scryptAsync = promisify(scrypt);
 
-// Helper function to hash passwords
-async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16).toString('hex');
-  const buf = await scryptAsync(password, salt, 64) as Buffer;
-  return `${buf.toString('hex')}.${salt}`;
-}
+// Helper function to hash passwords (This might be moved to auth.ts)
+// async function hashPassword(password: string): Promise<string> {
+//   const salt = randomBytes(16).toString('hex');
+//   const buf = await scryptAsync(password, salt, 64) as Buffer;
+//   return `${buf.toString('hex')}.${salt}`;
+// }
 
 // Helper function to verify passwords
 async function verifyPassword(storedPassword: string, suppliedPassword: string): Promise<boolean> {
@@ -117,22 +119,30 @@ export class PostgresStorage implements IStorage {
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    // Check if customer already exists
-    const existingCustomer = await this.getCustomerByMobile(customer.mobile);
-    if (existingCustomer) {
-      throw new Error("Customer with this mobile number already exists");
+    try {
+      // Check if customer already exists
+      const existingCustomer = await this.getCustomerByMobile(customer.mobile);
+      if (existingCustomer) {
+        throw new Error("Customer with this mobile number already exists");
+      }
+
+      // Hash the password before storing it
+      const hashedPassword = await hashPassword(customer.password);
+
+      // Create the customer
+      const [result] = await db.insert(customers).values({
+        ...customer,
+        password: hashedPassword,
+        points: 0,
+        level: "Bronze"
+      }).returning();
+
+      log(`Customer created successfully with ID: ${result.id}`);
+      return result;
+    } catch (error) {
+      log(`Error creating customer: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
     }
-
-    // Hash the password before storing it
-    const hashedPassword = await hashPassword(customer.password);
-
-    const [result] = await db.insert(customers).values({
-      ...customer,
-      password: hashedPassword,
-      points: 0,
-      level: "Bronze"
-    }).returning();
-    return result;
   }
 
   async listCustomers(): Promise<Customer[]> {
