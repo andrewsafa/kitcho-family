@@ -42,6 +42,10 @@ export async function registerRoutes(app: Express) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
+      if (!customer.password) {
+        return res.status(401).json({ error: "Password not set for this account" });
+      }
+
       // Verify password
       const passwordValid = await comparePasswords(password, customer.password);
       if (!passwordValid) {
@@ -65,6 +69,7 @@ export async function registerRoutes(app: Express) {
         level: customer.level
       });
     } catch (error) {
+      console.error('Login error:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
   });
