@@ -124,7 +124,7 @@ export class PostgresStorage implements IStorage {
     }
 
     // Hash the password before storing it
-    const hashedPassword = customer.password ? await hashPassword(customer.password) : await hashPassword("new123");
+    const hashedPassword = customer.password ? await hashPassword(customer.password) : null;
 
     const [result] = await db.insert(customers).values({
       ...customer,
