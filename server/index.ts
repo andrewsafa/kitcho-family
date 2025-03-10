@@ -53,7 +53,7 @@ async function startServer() {
       app.use(express.static(staticPath));
 
       // Add catch-all route to serve index.html for client-side routing
-      app.get('*', (req, res) => {
+      app.get('*', (_req, res) => {
         res.sendFile("index.html", { root: staticPath });
       });
     } else {

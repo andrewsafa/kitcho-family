@@ -2,31 +2,25 @@ import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Admin table for system administrators
 export const admins = pgTable("admins", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
 });
 
-export const partners = pgTable("partners", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  name: text("name").notNull(),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
+// Customers table for loyalty program members
 export const customers = pgTable("customers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   mobile: text("mobile").notNull().unique(),
   points: integer("points").notNull().default(0),
   level: text("level").notNull().default("Bronze"),
-  verificationCode: text("verification_code"), // New field for customer verification
-  password: text("password"), // New field for customer password
+  verificationCode: text("verification_code"), // For secure verification
+  password: text("password"), // For customer login
 });
 
+// Point transactions to track loyalty points
 export const pointTransactions = pgTable("point_transactions", {
   id: serial("id").primaryKey(),
   customerId: integer("customer_id").notNull(),
@@ -35,15 +29,17 @@ export const pointTransactions = pgTable("point_transactions", {
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
+// Benefits available at each loyalty level
 export const levelBenefits = pgTable("level_benefits", {
   id: serial("id").primaryKey(),
   level: text("level").notNull(),
   benefit: text("benefit").notNull(),
   active: boolean("active").notNull().default(true),
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
-  imagePath: text("image_path"),  // New field for benefit image
+  imagePath: text("image_path"),  // Optional image for the benefit
 });
 
+// Special events that affect point multipliers
 export const specialEvents = pgTable("special_events", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -54,6 +50,7 @@ export const specialEvents = pgTable("special_events", {
   active: boolean("active").notNull().default(true),
 });
 
+// Special offers for different loyalty levels
 export const specialOffers = pgTable("special_offers", {
   id: serial("id").primaryKey(),
   level: text("level").notNull(),
@@ -61,39 +58,13 @@ export const specialOffers = pgTable("special_offers", {
   description: text("description").notNull(),
   validUntil: timestamp("valid_until").notNull(),
   active: boolean("active").notNull().default(true),
-  imagePath: text("image_path"),  // New field for offer image
+  imagePath: text("image_path"),  // Optional image for the offer
 });
 
-export const storeSubmissions = pgTable("store_submissions", {
-  id: serial("id").primaryKey(),
-  shortDescription: text("short_description").notNull(),
-  fullDescription: text("full_description").notNull(),
-  privacyPolicyUrl: text("privacy_policy_url").notNull(),
-  contactEmail: text("contact_email").notNull(),
-  contactPhone: text("contact_phone"),
-  iconPath: text("icon_path"),
-  featureGraphicPath: text("feature_graphic_path"),
-  screenshotPaths: text("screenshot_paths").array(),
-  status: text("status").notNull().default("pending"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
-export const insertAdminSchema = createInsertSchema(admins).pick({
-  username: true,
-  password: true,
-}).extend({
+// Zod schemas for input validation
+export const insertAdminSchema = createInsertSchema(admins).extend({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-export const insertPartnerSchema = createInsertSchema(partners).pick({
-  username: true,
-  password: true,
-  name: true,
-}).extend({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
 });
 
 export const insertCustomerSchema = createInsertSchema(customers).pick({
@@ -103,7 +74,7 @@ export const insertCustomerSchema = createInsertSchema(customers).pick({
 }).extend({
   mobile: z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid mobile number format"),
   name: z.string().min(2, "Name must be at least 2 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters").default("new123")
+  password: z.string().min(6, "Password must be at least 6 characters").optional()
 });
 
 export const insertPointTransactionSchema = createInsertSchema(pointTransactions).pick({
@@ -143,27 +114,9 @@ export const insertSpecialOfferSchema = createInsertSchema(specialOffers).pick({
   imagePath: z.string().optional(),
 });
 
-export const insertStoreSubmissionSchema = createInsertSchema(storeSubmissions).pick({
-  shortDescription: true,
-  fullDescription: true,
-  privacyPolicyUrl: true,
-  contactEmail: true,
-  contactPhone: true,
-  iconPath: true,
-  featureGraphicPath: true,
-  screenshotPaths: true,
-}).extend({
-  shortDescription: z.string().min(10, "Short description must be at least 10 characters"),
-  fullDescription: z.string().min(50, "Full description must be at least 50 characters"),
-  privacyPolicyUrl: z.string().url("Invalid privacy policy URL"),
-  contactEmail: z.string().email("Invalid contact email"),
-  contactPhone: z.string().optional(),
-});
-
+// TypeScript types
 export type Admin = typeof admins.$inferSelect;
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
-export type Partner = typeof partners.$inferSelect;
-export type InsertPartner = z.infer<typeof insertPartnerSchema>;
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type PointTransaction = typeof pointTransactions.$inferSelect;
@@ -174,9 +127,8 @@ export type SpecialEvent = typeof specialEvents.$inferSelect;
 export type InsertSpecialEvent = z.infer<typeof insertSpecialEventSchema>;
 export type SpecialOffer = typeof specialOffers.$inferSelect;
 export type InsertSpecialOffer = z.infer<typeof insertSpecialOfferSchema>;
-export type StoreSubmission = typeof storeSubmissions.$inferSelect;
-export type InsertStoreSubmission = z.infer<typeof insertStoreSubmissionSchema>;
 
+// Constants and helper functions
 export const LOYALTY_LEVELS = {
   Bronze: { min: 0, max: 100000 },
   Silver: { min: 100001, max: 300000 },
