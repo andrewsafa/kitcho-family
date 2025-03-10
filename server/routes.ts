@@ -1,12 +1,12 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema, insertPartnerSchema } from "@shared/schema";
-import { fromZodError } from "zod-validation-error";
-import { setupAuth, requireAdmin, hashPassword, comparePasswords } from "./auth";
-import { backupScheduler } from "./backup-scheduler";
+import { setupAuth } from "./auth";
+import { log } from "./vite";
 
 export async function registerRoutes(app: Express) {
+  log("Setting up routes...");
+
   // Set up authentication first
   setupAuth(app);
 
@@ -36,7 +36,7 @@ export async function registerRoutes(app: Express) {
     await storage.ensureVerificationCodes();
     await storage.ensureCustomerPasswords();
   } catch (error) {
-    console.error("Error initializing customer data:", error);
+    log("Error initializing customer data:", error);
   }
 
   // Return the HTTP server
