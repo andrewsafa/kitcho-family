@@ -30,6 +30,7 @@ export async function registerRoutes(app: Express) {
   app.post("/api/customer/login", async (req, res) => {
     try {
       const { mobile, password } = req.body;
+      log(`Attempting login for mobile: ${mobile}`);
 
       // Input validation
       if (!mobile || !password) {
@@ -39,16 +40,19 @@ export async function registerRoutes(app: Express) {
       // Find customer
       const customer = await storage.getCustomerByMobile(mobile);
       if (!customer) {
+        log("Login failed: Customer not found");
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
       if (!customer.password) {
+        log("Login failed: Password not set");
         return res.status(401).json({ error: "Password not set for this account" });
       }
 
       // Verify password
       const passwordValid = await comparePasswords(password, customer.password);
       if (!passwordValid) {
+        log("Login failed: Invalid password");
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
@@ -56,11 +60,17 @@ export async function registerRoutes(app: Express) {
       req.session.customerId = customer.id;
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            log("Error saving session:", err);
+            reject(err);
+          } else {
+            log("Session saved successfully");
+            resolve();
+          }
         });
       });
 
+      log("Login successful");
       res.json({
         id: customer.id,
         name: customer.name,
@@ -71,6 +81,38 @@ export async function registerRoutes(app: Express) {
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // Customer routes
+  app.post("/api/customers", async (req, res) => {
+    try {
+      const customerData = insertCustomerSchema.parse(req.body);
+      log("Creating new customer:", customerData.mobile);
+
+      const customer = await storage.createCustomer(customerData);
+
+      // Set session after creating customer
+      req.session.customerId = customer.id;
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            log("Error saving session:", err);
+            reject(err);
+          } else {
+            log("Session saved successfully");
+            resolve();
+          }
+        });
+      });
+
+      res.status(201).json(customer);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("already exists")) {
+        res.status(409).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+      }
     }
   });
 
@@ -101,21 +143,6 @@ export async function registerRoutes(app: Express) {
     req.session.destroy(() => {
       res.json({ success: true });
     });
-  });
-
-  // Customer routes
-  app.post("/api/customers", async (req, res) => {
-    try {
-      const customerData = insertCustomerSchema.parse(req.body);
-      const customer = await storage.createCustomer(customerData);
-      res.status(201).json(customer);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("already exists")) {
-        res.status(409).json({ error: error.message });
-      } else {
-        res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
-      }
-    }
   });
 
   app.get("/api/customers/:id", async (req, res) => {

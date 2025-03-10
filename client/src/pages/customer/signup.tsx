@@ -40,11 +40,7 @@ export default function CustomerSignup() {
         title: "Welcome to Kitcho Family!",
         description: "Your account has been created successfully."
       });
-      // After successful signup, try to login
-      loginMutation.mutate({ 
-        mobile: data.mobile,
-        password: form.getValues("password")
-      });
+      navigate(`/dashboard/${data.mobile}`);
     },
     onError: (error) => {
       if (error.message.includes("already exists")) {
@@ -63,7 +59,6 @@ export default function CustomerSignup() {
     }
   });
 
-  // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (data: { mobile: string; password: string }) => {
       const res = await apiRequest("POST", "/api/customer/login", data);
@@ -90,11 +85,9 @@ export default function CustomerSignup() {
   });
 
   const onSubmit = (data: InsertCustomer) => {
+    const { mobile, password } = data;
     if (isExistingCustomer) {
-      loginMutation.mutate({ 
-        mobile: data.mobile,
-        password: data.password
-      });
+      loginMutation.mutate({ mobile, password });
     } else {
       signupMutation.mutate(data);
     }
