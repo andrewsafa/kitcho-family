@@ -135,6 +135,17 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Customer deletion endpoint
+  app.delete("/api/customers/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteCustomer(Number(req.params.id));
+      res.json({ message: "Customer deleted successfully" });
+    } catch (error) {
+      log(`Error deleting customer: ${error instanceof Error ? error.message : String(error)}`);
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   // Points transaction routes
   app.post("/api/points", requireAdmin, async (req, res) => {
     try {
