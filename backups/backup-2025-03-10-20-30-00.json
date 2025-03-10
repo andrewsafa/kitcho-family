@@ -1,0 +1,133 @@
+{
+  "customers": [
+    {
+      "id": 55,
+      "name": "sharly",
+      "mobile": "+201225334418",
+      "points": 100000,
+      "level": "Bronze",
+      "verificationCode": "PP5RM2",
+      "password": "b4ba29161e06ec7e21700e6f24d413c401c7155f750e92b5d19891407ff648020cb7af94187da3f518486621f5d0da1a0c1b777e3f7212871e214cd16f06c381.f9384580017392b606c427cbd3bd5c34"
+    },
+    {
+      "id": 53,
+      "name": "Andrew Safa",
+      "mobile": "+201004408092",
+      "points": 200000,
+      "level": "Silver",
+      "verificationCode": "3KB22C",
+      "password": "c21e889187b5ce07fb73db32b6779d2e78e38858638b69a43460ae6925dde0812f7eb339793ae6968ff704aca5a4d0fd79534d95bf39ea627d98c38d8b1f3462.a271e970039417781675c24d68dd9ca6"
+    }
+  ],
+  "transactions": [
+    {
+      "id": 47,
+      "customerId": 55,
+      "points": 100000,
+      "description": "Large",
+      "timestamp": "2025-03-10T20:27:13.569Z"
+    },
+    {
+      "id": 48,
+      "customerId": 53,
+      "points": 200000,
+      "description": "Small",
+      "timestamp": "2025-03-10T20:27:49.345Z"
+    }
+  ],
+  "benefits": [],
+  "events": [
+    {
+      "id": 3,
+      "name": "",
+      "description": "",
+      "multiplier": 2,
+      "startDate": "2025-03-03T00:00:00.000Z",
+      "endDate": "2025-03-10T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "id": 4,
+      "name": "andrew",
+      "description": "Medium",
+      "multiplier": 2,
+      "startDate": "2025-03-03T00:00:00.000Z",
+      "endDate": "2025-03-10T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "id": 5,
+      "name": "BB1",
+      "description": "",
+      "multiplier": 2,
+      "startDate": "2025-03-03T00:00:00.000Z",
+      "endDate": "2025-03-10T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "id": 6,
+      "name": "SS2",
+      "description": "",
+      "multiplier": 2,
+      "startDate": "2025-03-03T00:00:00.000Z",
+      "endDate": "2025-03-10T00:00:00.000Z",
+      "active": true
+    }
+  ],
+  "offers": [
+    {
+      "id": 9,
+      "level": "Bronze",
+      "title": "",
+      "description": "",
+      "validUntil": "2025-04-02T00:00:00.000Z",
+      "active": false,
+      "imagePath": null
+    },
+    {
+      "id": 11,
+      "level": "Bronze",
+      "title": "B2",
+      "description": "",
+      "validUntil": "2025-04-02T00:00:00.000Z",
+      "active": false,
+      "imagePath": null
+    },
+    {
+      "id": 13,
+      "level": "Silver",
+      "title": "S2",
+      "description": "",
+      "validUntil": "2025-04-02T00:00:00.000Z",
+      "active": false,
+      "imagePath": null
+    },
+    {
+      "id": 12,
+      "level": "Silver",
+      "title": "S1",
+      "description": "",
+      "validUntil": "2025-04-02T00:00:00.000Z",
+      "active": false,
+      "imagePath": null
+    },
+    {
+      "id": 18,
+      "level": "Bronze",
+      "title": "عرض خاص علي غسالة اطباق بوش 60 سم",
+      "description": "دلوقتي خصم 10 الاف جنيه , يعني هتبقي ب 20999 بدل 31000 , العرض حتي نفاذ الكمية",
+      "validUntil": "2025-03-15T00:00:00.000Z",
+      "active": false,
+      "imagePath": null
+    },
+    {
+      "id": 21,
+      "level": "Bronze",
+      "title": "test",
+      "description": "test",
+      "validUntil": "2025-04-03T00:00:00.000Z",
+      "active": false,
+      "imagePath": "/assets/offers/image-1741102543314.jpg"
+    }
+  ]
+}
