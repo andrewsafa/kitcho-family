@@ -39,6 +39,20 @@ async function startServer() {
     }
     log("Database connection successful");
 
+    // Create initial admin if none exists
+    try {
+      log("Checking for existing admin account...");
+      const admins = await storage.listAdmins();
+      if (admins.length === 0) {
+        log("No admin account found. Creating initial admin...");
+        // Assuming a function apiRequest exists to make API calls.  This needs to be defined elsewhere.
+        await apiRequest("POST", "/api/admin/setup"); 
+        log("Initial admin account created successfully");
+      }
+    } catch (error) {
+      log("Error checking/creating admin account:", error);
+    }
+
     // Register API routes first
     log("Registering API routes...");
     const server = await registerRoutes(app);
