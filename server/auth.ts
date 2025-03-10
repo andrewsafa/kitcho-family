@@ -3,6 +3,7 @@ import session from "express-session";
 import { storage } from "./storage";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import { log } from "./vite";
 
 const scryptAsync = promisify(scrypt);
 
@@ -44,22 +45,27 @@ export function setupAuth(app: express.Express) {
   // Admin login endpoint
   app.post("/api/admin/login", async (req, res) => {
     try {
+      log("Admin login attempt...");
       const { username, password } = req.body;
 
       // Input validation
       if (!username || !password) {
+        log("Login failed: Missing username or password");
         return res.status(400).json({ message: "Username and password are required" });
       }
 
+      log(`Checking credentials for username: ${username}`);
       const admin = await storage.getAdminByUsername(username);
       if (!admin || !(await comparePasswords(password, admin.password))) {
+        log("Login failed: Invalid credentials");
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       req.session.adminId = admin.id;
-      res.json({ success: true });
+      log(`Admin login successful for user: ${username}`);
+      res.json({ id: admin.id, username: admin.username });
     } catch (error) {
-      console.error("Admin login error:", error);
+      log(`Admin login error: ${error instanceof Error ? error.message : String(error)}`);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -67,25 +73,55 @@ export function setupAuth(app: express.Express) {
   // Admin session check endpoint
   app.get("/api/admin/me", async (req, res) => {
     try {
+      log("Checking admin session...");
       if (!req.session.adminId) {
+        log("No admin session found");
         return res.status(401).json({ message: "Not authenticated" });
       }
 
       const admin = await storage.getAdmin(req.session.adminId);
       if (!admin) {
+        log("Admin not found for session ID");
         return res.status(401).json({ message: "Admin not found" });
       }
 
-      res.json(admin);
+      log(`Admin session valid for: ${admin.username}`);
+      res.json({ id: admin.id, username: admin.username });
     } catch (error) {
-      console.error("Admin session check error:", error);
+      log(`Admin session check error: ${error instanceof Error ? error.message : String(error)}`);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Create initial admin if none exists
+  app.post("/api/admin/setup", async (req, res) => {
+    try {
+      log("Attempting to create initial admin...");
+      const existingAdmins = await storage.listAdmins();
+      if (existingAdmins.length > 0) {
+        log("Admin already exists");
+        return res.status(400).json({ message: "Admin already exists" });
+      }
+
+      const hashedPassword = await hashPassword("admin123");
+      const admin = await storage.createAdmin({
+        username: "admin",
+        password: hashedPassword
+      });
+
+      log("Initial admin created successfully");
+      res.json({ message: "Initial admin created", admin: { id: admin.id, username: admin.username } });
+    } catch (error) {
+      log(`Admin setup error: ${error instanceof Error ? error.message : String(error)}`);
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
   // Logout endpoint
-  app.post("/api/logout", (req, res) => {
+  app.post("/api/admin/logout", (req, res) => {
+    log("Admin logout request...");
     req.session.destroy(() => {
+      log("Admin session destroyed");
       res.json({ success: true });
     });
   });
