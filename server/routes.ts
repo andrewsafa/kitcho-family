@@ -105,7 +105,11 @@ export async function registerRoutes(app: Express) {
       const customer = await storage.createCustomer(customerData);
       res.status(201).json(customer);
     } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+      if (error instanceof Error && error.message.includes("already exists")) {
+        res.status(409).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+      }
     }
   });
 

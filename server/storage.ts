@@ -117,6 +117,12 @@ export class PostgresStorage implements IStorage {
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
+    // Check if customer already exists
+    const existingCustomer = await this.getCustomerByMobile(customer.mobile);
+    if (existingCustomer) {
+      throw new Error("Customer with this mobile number already exists");
+    }
+
     // Hash the password before storing it
     const hashedPassword = customer.password ? await hashPassword(customer.password) : await hashPassword("new123");
 
