@@ -1,16 +1,11 @@
 [build]
 builder = "nixpacks"
 buildCommand = "npm ci && npm run build"
-watchPatterns = ["package.json", "src/**", "public/**"]
-memory = "4096"
 
 [deploy]
 startCommand = "npm start"
-healthcheckPath = "/health"
-healthcheckTimeout = 300
-restartPolicyType = "on_failure"
-numReplicas = 1
-buildFilter = "^(?!.*\\.test\\.js$).*$"
+healthcheckPath = "/"
+healthcheckTimeout = 100
 
 [deploy.env]
 NODE_ENV = "production"
@@ -18,11 +13,3 @@ PORT = "5000"
 
 [[ports]]
 port = "5000"
-protocol = "tcp"
-
-[nixpacks]
-platform = "node"
-version = "20"
-
-[nixpacks.build]
-environmentVariables = { NODE_ENV = "production" }
