@@ -101,13 +101,27 @@ export async function registerRoutes(app: Express) {
   setupAuth(app);
 
   // Basic health check endpoint
-  app.get("/health", (_req, res) => {
-    res.json({ 
-      status: "ok",
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV,
-      database: !!process.env.DATABASE_URL
-    });
+  app.get("/health", async (_req, res) => {
+    try {
+      // Test database connection by making a simple query
+      await storage.listCustomers();
+
+      res.json({ 
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV,
+        database: !!process.env.DATABASE_URL,
+        readiness: "ready"
+      });
+    } catch (error) {
+      // If database connection fails, return 503 Service Unavailable
+      res.status(503).json({
+        status: "error",
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : String(error),
+        readiness: "not_ready"
+      });
+    }
   });
 
   // Initialize verification codes for existing customers
