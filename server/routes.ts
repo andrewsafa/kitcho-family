@@ -100,6 +100,16 @@ export async function registerRoutes(app: Express) {
   // Set up authentication
   setupAuth(app);
 
+  // Basic health check endpoint
+  app.get("/health", (_req, res) => {
+    res.json({ 
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      database: !!process.env.DATABASE_URL
+    });
+  });
+
   // Initialize verification codes for existing customers
   try {
     await storage.ensureVerificationCodes();
@@ -865,8 +875,7 @@ export async function registerRoutes(app: Express) {
           .resize(1024, 500)
           .png()
           .toBuffer();
-        await fs.writeFile(`./store-assets/feature.png`, featureBuffer);
-      }
+        await fs.writeFile(`./store-assets/feature.png`, featureBuffer);}
 
       // Process screenshots
       if (files.screenshots) {
