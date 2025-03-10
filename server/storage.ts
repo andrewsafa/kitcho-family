@@ -93,7 +93,7 @@ export interface IStorage {
   //ensureCustomerPasswords(): Promise<void>;
   //deleteLevelBenefit(id: number): Promise<void>;
   //updateCustomerVerificationCode(id: number): Promise<Customer>;
-
+  listAdmins(): Promise<Admin[]>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -405,6 +405,9 @@ export class PostgresStorage implements IStorage {
       console.error('Database test failed:', error);
       return false;
     }
+  }
+  async listAdmins(): Promise<Admin[]> {
+    return await db.select().from(admins);
   }
 }
 
