@@ -28,19 +28,27 @@ export async function comparePasswords(supplied: string, stored: string) {
 
 export function setupAuth(app: express.Express) {
   // Session configuration
-  app.use(
-    session({
-      store: storage.sessionStore,
-      secret: process.env.SESSION_SECRET || "development-secret",
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        secure: process.env.NODE_ENV === "production",
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-      }
-    })
-  );
+  const sessionConfig: session.SessionOptions = {
+    store: storage.sessionStore,
+    secret: process.env.SESSION_SECRET || "development-secret",
+    resave: false,
+    saveUninitialized: false,
+    name: 'kitcho.sid', // Custom session cookie name
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax'
+    }
+  };
+
+  log("Setting up session middleware with config:", {
+    store: 'PostgreSQL',
+    cookieSecure: sessionConfig.cookie?.secure,
+    cookieMaxAge: sessionConfig.cookie?.maxAge
+  });
+
+  app.use(session(sessionConfig));
 
   // Admin login endpoint
   app.post("/api/admin/login", async (req, res) => {
@@ -56,12 +64,29 @@ export function setupAuth(app: express.Express) {
 
       log(`Checking credentials for username: ${username}`);
       const admin = await storage.getAdminByUsername(username);
-      if (!admin || !(await comparePasswords(password, admin.password))) {
-        log("Login failed: Invalid credentials");
+      if (!admin) {
+        log("Login failed: Admin not found");
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const passwordValid = await comparePasswords(password, admin.password);
+      if (!passwordValid) {
+        log("Login failed: Invalid password");
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       req.session.adminId = admin.id;
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            log("Error saving session:", err);
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+
       log(`Admin login successful for user: ${username}`);
       res.json({ id: admin.id, username: admin.username });
     } catch (error) {
@@ -74,6 +99,8 @@ export function setupAuth(app: express.Express) {
   app.get("/api/admin/me", async (req, res) => {
     try {
       log("Checking admin session...");
+      log("Session data:", { adminId: req.session.adminId });
+
       if (!req.session.adminId) {
         log("No admin session found");
         return res.status(401).json({ message: "Not authenticated" });
@@ -133,6 +160,7 @@ export function requireAdmin(
   next: express.NextFunction
 ) {
   if (!req.session.adminId) {
+    log("Admin authentication required but no session found");
     return res.status(401).json({ message: "Admin authentication required" });
   }
   next();
