@@ -3,6 +3,8 @@ import { log } from "./vite";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { storage } from "./storage";
+import path from "path";
+import fs from "fs";
 
 // Start-up diagnostic logging
 log("=== Server Initialization Started ===");
@@ -15,11 +17,7 @@ app.use(express.json());
 
 // Basic health check
 app.get('/health', (_req, res) => {
-  res.json({ 
-    status: 'ok', 
-    time: new Date().toISOString(),
-    env: process.env.NODE_ENV || 'development'
-  });
+  res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 // Global error handler
@@ -30,11 +28,6 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 const port = Number(process.env.PORT) || 5000;
 const host = "0.0.0.0";
-
-// Pre-listen diagnostic logging
-log("=== Attempting Server Start ===");
-log(`Binding to port: ${port}`);
-log(`Binding to host: ${host}`);
 
 async function startServer() {
   try {
@@ -50,15 +43,18 @@ async function startServer() {
     log("Registering API routes...");
     const server = await registerRoutes(app);
 
-    // Setup static file serving or Vite middleware
     if (process.env.NODE_ENV === "production") {
       log("Setting up static file serving for production...");
-      serveStatic(app);
+      const staticPath = path.join(process.cwd(), "dist/public");
+      log(`Static path: ${staticPath}`);
+      log(`index.html exists: ${fs.existsSync(path.join(staticPath, "index.html"))}`);
+
+      // Serve static files from the Vite build output directory
+      app.use(express.static(staticPath));
 
       // Add catch-all route to serve index.html for client-side routing
       app.get('*', (req, res) => {
-        log(`Serving index.html for path: ${req.path}`);
-        res.sendFile('index.html', { root: './dist/public' });
+        res.sendFile("index.html", { root: staticPath });
       });
     } else {
       log("Setting up Vite middleware for development...");
