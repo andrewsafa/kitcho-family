@@ -37,8 +37,15 @@ export default function AdminDashboard() {
 
 
   // Query hooks for common data
-  const { data: customers = [] } = useQuery<Customer[]>({
+  const { data: customers = [], isLoading } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/customers");
+      if (!res.ok) {
+        throw new Error("Failed to fetch customers");
+      }
+      return res.json();
+    }
   });
 
   const { data: backupConfig } = useQuery<any>({
@@ -949,9 +956,6 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" disabled={addBenefitMutation.isPending}>
-                        Add Benefit
-                      </Button>
                     </form>
                   </Form>
 
