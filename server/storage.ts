@@ -18,28 +18,32 @@ import {
   levelBenefits,
   admins,
   specialEvents,
-  specialOffers
+  specialOffers,
+  type StoreSubmission,
+  type InsertStoreSubmission,
+  storeSubmissions,
+  type Partner,
+  type InsertPartner,
+  partners
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, desc, and, gt } from "drizzle-orm";
+import { eq, desc, and, gt, sql } from "drizzle-orm";
 import connectPg from 'connect-pg-simple';
 import session from 'express-session';
 import { scrypt, randomBytes, timingSafeEqual as cryptoTimingSafeEqual } from 'crypto';
 import { promisify } from 'util';
-import { hashPassword } from "./auth";
-import { log } from "./vite";
 
 const PostgresSessionStore = connectPg(session);
 
 // Convert callback-based scrypt to Promise-based
 const scryptAsync = promisify(scrypt);
 
-// Helper function to hash passwords (This might be moved to auth.ts)
-// async function hashPassword(password: string): Promise<string> {
-//   const salt = randomBytes(16).toString('hex');
-//   const buf = await scryptAsync(password, salt, 64) as Buffer;
-//   return `${buf.toString('hex')}.${salt}`;
-// }
+// Helper function to hash passwords
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const buf = await scryptAsync(password, salt, 64) as Buffer;
+  return `${buf.toString('hex')}.${salt}`;
+}
 
 // Helper function to verify passwords
 async function verifyPassword(storedPassword: string, suppliedPassword: string): Promise<boolean> {
@@ -52,6 +56,7 @@ async function verifyPassword(storedPassword: string, suppliedPassword: string):
 }
 
 export interface IStorage {
+  // Keep existing interface methods
   getCustomer(id: number): Promise<Customer | undefined>;
   getCustomerByMobile(mobile: string): Promise<Customer | undefined>;
   createCustomer(customer: InsertCustomer): Promise<Customer>;
@@ -91,11 +96,35 @@ export interface IStorage {
   }): Promise<void>;
   sessionStore: session.Store;
   testConnection(): Promise<boolean>;
-  //updateCustomerPassword(id: number, newPassword: string): Promise<Customer>;
-  //ensureCustomerPasswords(): Promise<void>;
-  //deleteLevelBenefit(id: number): Promise<void>;
-  //updateCustomerVerificationCode(id: number): Promise<Customer>;
-  listAdmins(): Promise<Admin[]>;
+  createStoreSubmission(submission: InsertStoreSubmission): Promise<StoreSubmission>;
+  getStoreSubmission(id: number): Promise<StoreSubmission | undefined>;
+  listStoreSubmissions(): Promise<StoreSubmission[]>;
+  deleteStoreSubmission(id: number): Promise<void>;
+  updateStoreSubmission(id: number, submission: Partial<InsertStoreSubmission>): Promise<StoreSubmission>;
+  deleteLevelBenefit(id: number): Promise<void>;
+  // New method for updating customer passwords
+  updateCustomerPassword(id: number, newPassword: string): Promise<Customer>;
+  // Method to ensure all customers have passwords
+  ensureCustomerPasswords(): Promise<void>;
+  // Partner-related methods
+  getPartner(id: number): Promise<Partner | undefined>;
+  getPartnerByUsername(username: string): Promise<Partner | undefined>;
+  createPartner(partner: InsertPartner): Promise<Partner>;
+  updatePartnerPassword(id: number, newPassword: string): Promise<Partner>;
+  updatePartnerStatus(id: number, active: boolean): Promise<Partner>;
+  listPartners(): Promise<Partner[]>;
+  deletePartner(id: number): Promise<void>;
+  // Update customer verification code
+  updateCustomerVerificationCode(id: number): Promise<Customer>;
+}
+
+function generateVerificationCode(length = 6): string {
+  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return code;
 }
 
 export class PostgresStorage implements IStorage {
@@ -119,30 +148,81 @@ export class PostgresStorage implements IStorage {
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
+    // Hash the password before storing it
+    const hashedPassword = customer.password ? await hashPassword(customer.password) : await hashPassword("new123");
+
+    const [result] = await db.insert(customers).values({
+      ...customer,
+      password: hashedPassword,
+      points: 0,
+      level: "Bronze",
+      verificationCode: generateVerificationCode() 
+    }).returning();
+    return result;
+  }
+
+  // Add defensive code for existing customers without verification codes
+  async ensureVerificationCodes(): Promise<void> {
     try {
-      // Check if customer already exists
-      const existingCustomer = await this.getCustomerByMobile(customer.mobile);
-      if (existingCustomer) {
-        throw new Error("Customer with this mobile number already exists");
+      // Get all customers without verification codes
+      const results = await db
+        .select()
+        .from(customers)
+        .where(sql`verification_code IS NULL`);
+
+      // Generate and update verification codes for these customers
+      for (const customer of results) {
+        await db
+          .update(customers)
+          .set({ verificationCode: generateVerificationCode() })
+          .where(eq(customers.id, customer.id));
       }
 
-      // Hash the password before storing it
-      const hashedPassword = await hashPassword(customer.password);
-
-      // Create the customer
-      const [result] = await db.insert(customers).values({
-        ...customer,
-        password: hashedPassword,
-        points: 0,
-        level: "Bronze"
-      }).returning();
-
-      log(`Customer created successfully with ID: ${result.id}`);
-      return result;
+      console.log(`Updated verification codes for ${results.length} customers`);
     } catch (error) {
-      log(`Error creating customer: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
+      console.error("Error ensuring verification codes:", error);
     }
+  }
+
+  // Add method to ensure all customers have passwords
+  async ensureCustomerPasswords(): Promise<void> {
+    try {
+      // Get all customers without passwords
+      const results = await db
+        .select()
+        .from(customers)
+        .where(sql`password IS NULL`);
+
+      // Generate and update passwords for these customers
+      for (const customer of results) {
+        const hashedPassword = await hashPassword("new123");
+        await db
+          .update(customers)
+          .set({ password: hashedPassword })
+          .where(eq(customers.id, customer.id));
+      }
+
+      console.log(`Updated passwords for ${results.length} customers`);
+    } catch (error) {
+      console.error("Error ensuring customer passwords:", error);
+    }
+  }
+
+  // Add method to update a customer's password
+  async updateCustomerPassword(id: number, newPassword: string): Promise<Customer> {
+    const hashedPassword = await hashPassword(newPassword);
+
+    const [updatedCustomer] = await db
+      .update(customers)
+      .set({ password: hashedPassword })
+      .where(eq(customers.id, id))
+      .returning();
+
+    if (!updatedCustomer) {
+      throw new Error("Customer not found");
+    }
+
+    return updatedCustomer;
   }
 
   async listCustomers(): Promise<Customer[]> {
@@ -383,7 +463,6 @@ export class PostgresStorage implements IStorage {
       if (data.offers.length) await tx.insert(specialOffers).values(data.offers);
     });
   }
-
   async testConnection(): Promise<boolean> {
     try {
       console.log('Testing database connection...');
@@ -422,8 +501,120 @@ export class PostgresStorage implements IStorage {
       return false;
     }
   }
-  async listAdmins(): Promise<Admin[]> {
-    return await db.select().from(admins);
+  async createStoreSubmission(submission: InsertStoreSubmission): Promise<StoreSubmission> {
+    const [result] = await db
+      .insert(storeSubmissions)
+      .values(submission)
+      .returning();
+    return result;
+  }
+
+  async getStoreSubmission(id: number): Promise<StoreSubmission | undefined> {
+    const results = await db
+      .select()
+      .from(storeSubmissions)
+      .where(eq(storeSubmissions.id, id));
+    return results[0];
+  }
+
+  async listStoreSubmissions(): Promise<StoreSubmission[]> {
+    return await db
+      .select()
+      .from(storeSubmissions)
+      .orderBy(desc(storeSubmissions.createdAt));
+  }
+  async deleteStoreSubmission(id: number): Promise<void> {
+    await db
+      .delete(storeSubmissions)
+      .where(eq(storeSubmissions.id, id));
+  }
+
+  async updateStoreSubmission(id: number, submission: Partial<InsertStoreSubmission>): Promise<StoreSubmission> {
+    const [result] = await db
+      .update(storeSubmissions)
+      .set(submission)
+      .where(eq(storeSubmissions.id, id))
+      .returning();
+    return result;
+  }
+  async deleteLevelBenefit(id: number): Promise<void> {
+    await db.delete(levelBenefits).where(eq(levelBenefits.id, id));
+  }
+  // Partner-related methods
+  async getPartner(id: number): Promise<Partner | undefined> {
+    const results = await db.select().from(partners).where(eq(partners.id, id));
+    return results[0];
+  }
+
+  async getPartnerByUsername(username: string): Promise<Partner | undefined> {
+    const results = await db.select().from(partners).where(eq(partners.username, username));
+    return results[0];
+  }
+
+  async createPartner(partner: InsertPartner): Promise<Partner> {
+    // Hash the password before storing it
+    const hashedPassword = await hashPassword(partner.password);
+
+    const [result] = await db.insert(partners).values({
+      ...partner,
+      password: hashedPassword,
+      active: true,
+      createdAt: new Date()
+    }).returning();
+    return result;
+  }
+
+  async updatePartnerPassword(id: number, newPassword: string): Promise<Partner> {
+    const hashedPassword = await hashPassword(newPassword);
+
+    const [updatedPartner] = await db
+      .update(partners)
+      .set({ password: hashedPassword })
+      .where(eq(partners.id, id))
+      .returning();
+
+    if (!updatedPartner) {
+      throw new Error("Partner not found");
+    }
+
+    return updatedPartner;
+  }
+
+  async updatePartnerStatus(id: number, active: boolean): Promise<Partner> {
+    const [result] = await db
+      .update(partners)
+      .set({ active })
+      .where(eq(partners.id, id))
+      .returning();
+
+    if (!result) {
+      throw new Error("Partner not found");
+    }
+
+    return result;
+  }
+
+  async listPartners(): Promise<Partner[]> {
+    return await db.select().from(partners);
+  }
+
+  async deletePartner(id: number): Promise<void> {
+    await db.delete(partners).where(eq(partners.id, id));
+  }
+  async updateCustomerVerificationCode(id: number): Promise<Customer> {
+    const newCode = generateVerificationCode();
+
+    const [updatedCustomer] = await db
+      .update(customers)
+      .set({ verificationCode: newCode })
+      .where(eq(customers.id, id))
+      .returning();
+
+    if (!updatedCustomer) {
+      throw new Error("Customer not found");
+    }
+
+    return updatedCustomer;
   }
 }
 

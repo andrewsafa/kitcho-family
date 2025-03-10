@@ -1,17 +1,13 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm ci && npm run build"
+buildCommand = "npm run build"
 
 [deploy]
-startCommand = "NODE_ENV=production node dist/index.js"
-healthcheckPath = "/health"
+startCommand = "npm start"
+healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 5
+numReplicas = 1
 
 [deploy.env]
 NODE_ENV = "production"
-PORT = "5000"
-
-[[ports]]
-port = "5000"

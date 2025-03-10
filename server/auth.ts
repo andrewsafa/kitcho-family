@@ -1,16 +1,18 @@
 import express from "express";
 import session from "express-session";
-import { storage } from "./storage";
+import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { log } from "./vite";
+import { storage } from "./storage";
+import { type Admin } from "@shared/schema";
 
+const MemoryStore = createMemoryStore(session);
 const scryptAsync = promisify(scrypt);
 
 declare module "express-session" {
   interface SessionData {
     adminId?: number;
-    customerId?: number;
+    partnerId?: number;
   }
 }
 
@@ -28,25 +30,49 @@ export async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: express.Express) {
-  // Session configuration
-  const sessionConfig: session.SessionOptions = {
-    store: storage.sessionStore,
-    secret: process.env.SESSION_SECRET || "development-secret",
-    resave: false,
-    saveUninitialized: false,
-    name: 'kitcho.sid', // Custom session cookie name
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: 'lax'
+  app.use(
+    session({
+      store: storage.sessionStore,
+      secret: "kitcho-family-secret",
+      resave: false,
+      saveUninitialized: false,
+    })
+  );
+
+  app.post("/api/admin/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      const admin = await storage.getAdminByUsername(username);
+
+      if (!admin || !(await comparePasswords(password, admin.password))) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      req.session.adminId = admin.id;
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
     }
-  };
+  });
 
-  log("Setting up auth middleware");
-  app.use(session(sessionConfig));
+  app.post("/api/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ success: true });
+    });
+  });
 
-  log("Auth middleware setup complete");
+  app.get("/api/admin/me", async (req, res) => {
+    if (!req.session.adminId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const admin = await storage.getAdmin(req.session.adminId);
+    if (!admin) {
+      return res.status(401).json({ message: "Admin not found" });
+    }
+
+    res.json(admin);
+  });
 }
 
 export function requireAdmin(
@@ -55,7 +81,6 @@ export function requireAdmin(
   next: express.NextFunction
 ) {
   if (!req.session.adminId) {
-    log("Admin authentication required but no session found");
     return res.status(401).json({ message: "Admin authentication required" });
   }
   next();

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialOffer, type PointTransaction, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema } from "@shared/schema";
+import { type Customer, type InsertPointTransaction, type LevelBenefit, type SpecialOffer, type PointTransaction, type Partner, type InsertPartner, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema, insertPartnerSchema } from "@shared/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { CreditCard, Gift, Award, Cog, Users, Key, Download, Upload } from "lucide-react";
+import { Search, Download, Upload, Settings, CreditCard, Gift, Award, Cog, Users, Key, Briefcase } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -34,18 +34,11 @@ export default function AdminDashboard() {
   const [showDeductPoints, setShowDeductPoints] = useState(false);
   const [customerToDeduct, setCustomerToDeduct] = useState<Customer | null>(null);
   const [selectedMemberHistory, setSelectedMemberHistory] = useState<Customer | null>(null);
-
+  const [partnerSearchTerm, setPartnerSearchTerm] = useState("");
 
   // Query hooks for common data
-  const { data: customers = [], isLoading } = useQuery<Customer[]>({
+  const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/customers");
-      if (!res.ok) {
-        throw new Error("Failed to fetch customers");
-      }
-      return res.json();
-    }
   });
 
   const { data: backupConfig } = useQuery<any>({
@@ -54,6 +47,11 @@ export default function AdminDashboard() {
 
   const { data: backupHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/backup/history"],
+  });
+
+  // Partners data query
+  const { data: partners = [], isLoading: isLoadingPartners } = useQuery<Partner[]>({
+    queryKey: ["/api/admin/partners"],
   });
 
   // Level-specific queries
@@ -156,6 +154,15 @@ export default function AdminDashboard() {
     }
   });
 
+  // Add form for partners
+  const partnerForm = useForm({
+    resolver: zodResolver(insertPartnerSchema),
+    defaultValues: {
+      username: "",
+      name: "",
+      password: "partner123" // Default password
+    }
+  });
 
   // Add form for deducting points
   const deductPointsForm = useForm({
@@ -299,6 +306,83 @@ export default function AdminDashboard() {
     }
   });
 
+  // Partner mutations
+  const createPartnerMutation = useMutation({
+    mutationFn: async (data: InsertPartner) => {
+      const res = await apiRequest("POST", "/api/admin/partners", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Partner created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
+      partnerForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error creating partner",
+        description: error.message
+      });
+    }
+  });
+
+  const resetPartnerPasswordMutation = useMutation({
+    mutationFn: async (partnerId: number) => {
+      const res = await apiRequest("POST", `/api/admin/partners/${partnerId}/reset-password`, {
+        newPassword: "partner123" // Default password for reset
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Partner password reset successfully",
+        description: "Password has been reset to 'partner123'"
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive", 
+        title: "Error resetting partner password",
+        description: error.message
+      });
+    }
+  });
+
+  const updatePartnerStatusMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: number, active: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/admin/partners/${id}/status`, { active });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
+      toast({ title: "Partner status updated" });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error updating partner status",
+        description: error.message
+      });
+    }
+  });
+
+  const deletePartnerMutation = useMutation({
+    mutationFn: async (partnerId: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/partners/${partnerId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
+      toast({ title: "Partner deleted successfully" });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error deleting partner",
+        description: error.message
+      });
+    }
+  });
 
   const updateBackupConfigMutation = useMutation({
     mutationFn: async (config: any) => {
@@ -355,7 +439,7 @@ export default function AdminDashboard() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast({
+      toast({ 
         title: "Password reset successfully",
         description: `Customer password has been reset to 'new123'`
       });
@@ -396,39 +480,14 @@ export default function AdminDashboard() {
     }
   });
 
-  // Delete customer mutation
-  const deleteCustomerMutation = useMutation({
-    mutationFn: async (customerId: number) => {
-      const res = await apiRequest("DELETE", `/api/customers/${customerId}`);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to delete customer");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Customer deleted successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error deleting customer",
-        description: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
   const handleDeleteCustomer = async (customer: Customer) => {
     if (window.confirm(`Are you sure you want to delete ${customer.name}?`)) {
       try {
-        deleteCustomerMutation.mutate(customer.id);
+        await apiRequest("DELETE", `/api/customers/${customer.id}`);
+        queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+        toast({ title: `${customer.name} deleted successfully` });
       } catch (error) {
-        toast({ 
-          variant: "destructive", 
-          title: "Error deleting customer", 
-          description: error instanceof Error ? error.message : String(error) 
-        });
+        toast({ variant: "destructive", title: "Error deleting customer", description: (error as Error).message });
       }
     }
   };
@@ -436,6 +495,18 @@ export default function AdminDashboard() {
   const handleResetPassword = (customer: Customer) => {
     if (window.confirm(`Reset password for ${customer.name} to 'new123'?`)) {
       resetPasswordMutation.mutate(customer.id);
+    }
+  };
+
+  const handleResetPartnerPassword = (partner: Partner) => {
+    if (window.confirm(`Reset password for partner ${partner.name} to 'partner123'?`)) {
+      resetPartnerPasswordMutation.mutate(partner.id);
+    }
+  };
+
+  const handleDeletePartner = (partner: Partner) => {
+    if (window.confirm(`Are you sure you want to delete partner ${partner.name}?`)) {
+      deletePartnerMutation.mutate(partner.id);
     }
   };
 
@@ -447,29 +518,9 @@ export default function AdminDashboard() {
 
   const handleBackup = async () => {
     try {
-      const res = await apiRequest("GET", "/api/backup");
-      if (!res.ok) {
-        throw new Error("Failed to create backup");
-      }
-
-      const data = await res.json();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `kitcho-family-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast({ title: "Backup created successfully" });
+      runBackupMutation.mutate();
     } catch (error) {
-      toast({ 
-        variant: "destructive", 
-        title: "Error creating backup", 
-        description: error instanceof Error ? error.message : String(error)
-      });
+      toast({ variant: "destructive", title: "Error initiating backup", description: (error as Error).message });
     }
   };
 
@@ -515,6 +566,9 @@ export default function AdminDashboard() {
     changePasswordMutation.mutate(data);
   };
 
+  const onPartnerSubmit = (data: InsertPartner) => {
+    createPartnerMutation.mutate(data);
+  };
 
   // Event handlers
   const handleSearch = async (mobile: string) => {
@@ -557,6 +611,10 @@ export default function AdminDashboard() {
     customer.level.toLowerCase().includes(memberSearchTerm.toLowerCase())
   );
 
+  const filteredPartners = partners.filter(partner =>
+    partner.name.toLowerCase().includes(partnerSearchTerm.toLowerCase()) ||
+    partner.username.toLowerCase().includes(partnerSearchTerm.toLowerCase())
+  );
 
   // Get level-specific data
   const getLevelBenefits = (level: string) => {
@@ -614,7 +672,7 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="points" className="space-y-6">
-          <TabsList className="grid grid-cols-5 gap-4 h-auto p-1"> {/* Reduced columns */}
+          <TabsList className="grid grid-cols-6 gap-4 h-auto p-1">
             <TabsTrigger value="points" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Points
@@ -622,6 +680,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Members
+            </TabsTrigger>
+            <TabsTrigger value="partners" className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Partners
             </TabsTrigger>
             <TabsTrigger value="offers" className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
@@ -819,6 +881,159 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Partners Tab */}
+          <TabsContent value="partners">
+            <Card>
+              <CardHeader>
+                <CardTitle>Partner Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <Form {...partnerForm}>
+                    <form onSubmit={partnerForm.handleSubmit(onPartnerSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={partnerForm.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter partner username" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={partnerForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter partner name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={partnerForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="password" 
+                                  placeholder="Enter partner password" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        disabled={createPartnerMutation.isPending}
+                        className="mt-2"
+                      >
+                        Create Partner
+                      </Button>
+                    </form>
+                  </Form>
+
+                  <div className="mt-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">Partner Accounts</h3>
+                      <Input
+                        placeholder="Search partners..."
+                        value={partnerSearchTerm}
+                        onChange={(e) => setPartnerSearchTerm(e.target.value)}
+                        className="max-w-xs"
+                      />
+                    </div>
+
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Username</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {isLoadingPartners ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-4">
+                                Loading partner accounts...
+                              </TableCell>
+                            </TableRow>
+                          ) : filteredPartners.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                                No partner accounts found
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredPartners.map((partner) => (
+                              <TableRow key={partner.id}>
+                                <TableCell className="font-medium">{partner.username}</TableCell>
+                                <TableCell>{partner.name}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Switch
+                                      checked={partner.active}
+                                      onCheckedChange={(checked) => {
+                                        updatePartnerStatusMutation.mutate({
+                                          id: partner.id,
+                                          active: checked
+                                        });
+                                      }}
+                                    />
+                                    <span>{partner.active ? "Active" : "Inactive"}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {partner.createdAt ? format(new Date(partner.createdAt), 'MMM d, yyyy') : '—'}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleResetPartnerPassword(partner)}
+                                    >
+                                      <Key className="h-3 w-3 mr-1" />
+                                      Reset Password
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDeletePartner(partner)}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Offers Tab */}
           <TabsContent value="offers">
             <Card>
@@ -981,6 +1196,9 @@ export default function AdminDashboard() {
                           </FormItem>
                         )}
                       />
+                      <Button type="submit" disabled={addBenefitMutation.isPending}>
+                        Add Benefit
+                      </Button>
                     </form>
                   </Form>
 

@@ -29,10 +29,6 @@ export default function CustomerSignup() {
   const signupMutation = useMutation({
     mutationFn: async (data: InsertCustomer) => {
       const res = await apiRequest("POST", "/api/customers", data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to create account");
-      }
       return res.json();
     },
     onSuccess: (data) => {
@@ -40,19 +36,11 @@ export default function CustomerSignup() {
         title: "Welcome to Kitcho Family!",
         description: "Your account has been created successfully."
       });
-      // After successful signup, attempt automatic login
-      loginMutation.mutate({
-        mobile: data.mobile,
-        password: form.getValues("password")
-      });
+      navigate(`/dashboard/${data.mobile}`);
     },
     onError: (error) => {
-      if (error.message.includes("already exists")) {
+      if (error.message.includes("409")) {
         setIsExistingCustomer(true);
-        toast({
-          title: "Account Exists",
-          description: "Please log in with your existing account",
-        });
       } else {
         toast({
           variant: "destructive",
@@ -63,19 +51,16 @@ export default function CustomerSignup() {
     }
   });
 
+  // New mutation for customer login
   const loginMutation = useMutation({
-    mutationFn: async (data: { mobile: string; password: string }) => {
-      const res = await apiRequest("POST", "/api/customer/login", data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Login failed");
-      }
+    mutationFn: async (data: { mobile: string, password?: string }) => {
+      const res = await apiRequest("POST", "/api/customers/login", data);
       return res.json();
     },
     onSuccess: (data) => {
       toast({
         title: "Welcome back!",
-        description: "Successfully logged in"
+        description: "Your verification code has been updated."
       });
       navigate(`/dashboard/${data.mobile}`);
     },
@@ -89,9 +74,13 @@ export default function CustomerSignup() {
   });
 
   const onSubmit = (data: InsertCustomer) => {
-    const { mobile, password } = data;
     if (isExistingCustomer) {
-      loginMutation.mutate({ mobile, password });
+      // Instead of direct navigation, call the login endpoint
+      // This will regenerate the verification code
+      loginMutation.mutate({ 
+        mobile: data.mobile,
+        password: data.password 
+      });
     } else {
       signupMutation.mutate(data);
     }
@@ -101,34 +90,32 @@ export default function CustomerSignup() {
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <Gift className="h-6 w-6 text-primary" />
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="Kitcho Family Logo" 
+            className="h-24 mx-auto mb-6"
+          />
           <CardTitle className="text-2xl">Welcome to Kitcho Family</CardTitle>
           <CardDescription>
-            {isExistingCustomer 
-              ? "Welcome back! Please log in to your account"
-              : "Join our family and start earning rewards on every visit"}
+            Join our family and start earning rewards on every visit
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {!isExistingCustomer && (
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="mobile"
@@ -149,11 +136,7 @@ export default function CustomerSignup() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder={isExistingCustomer ? "Enter your password" : "Create a password"} 
-                        {...field} 
-                      />
+                      <Input type="password" placeholder="Create a password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -168,19 +151,6 @@ export default function CustomerSignup() {
                   (loginMutation.isPending ? "Logging in..." : "Login to Kitcho Family") : 
                   (signupMutation.isPending ? "Joining..." : "Join Kitcho Family")
                 }
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setIsExistingCustomer(!isExistingCustomer);
-                  form.reset();
-                }}
-              >
-                {isExistingCustomer 
-                  ? "Don't have an account? Sign up" 
-                  : "Already have an account? Log in"}
               </Button>
             </form>
           </Form>
