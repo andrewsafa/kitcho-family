@@ -13,6 +13,7 @@ declare module "express-session" {
   interface SessionData {
     adminId?: number;
     partnerId?: number;
+    customerId?: number;
   }
 }
 

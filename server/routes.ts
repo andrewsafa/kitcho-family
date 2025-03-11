@@ -89,7 +89,11 @@ const upload = multer({
 });
 
 // Middleware to check if a partner is authenticated
-function requirePartner(req: any, res: any, next: any) {
+function requirePartner(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
   if (!req.session.partnerId) {
     return res.status(401).json({ message: "Not authenticated" });
   }
@@ -723,7 +727,9 @@ export async function registerRoutes(app: Express) {
 
   app.get("/api/partner/me", requirePartner, async (req, res) => {
     try {
-      const partner = await storage.getPartner(req.session.partnerId);
+      // Safe to use non-null assertion here as requirePartner middleware guarantees partnerId exists
+      const partnerId = req.session.partnerId!;
+      const partner = await storage.getPartner(partnerId);
       if (!partner) {
         return res.status(404).json({ message: "Partner not found" });
       }
