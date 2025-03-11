@@ -1,0 +1,14 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm run generate && npm run build"
+
+[deploy]
+startCommand = "npm run migrate --omit=dev && NODE_ENV=production node dist/index.js"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 5000
+restartPolicyType = "on_failure"
+numReplicas = 1
+
+[deploy.env]
+NODE_ENV = "production"
+PORT = "8080"

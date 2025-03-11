@@ -1,0 +1,1 @@
+web: npm run migrate --omit=dev && NODE_ENV=production node dist/index.js
