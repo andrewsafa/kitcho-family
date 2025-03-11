@@ -106,23 +106,9 @@ export async function registerRoutes(app: Express) {
   // Primary health check endpoint for Railway deployment
   app.get('/healthz', (_req, res) => {
     // This is the primary health check that Railway will use
-    // Keep it simple and fast with minimal dependencies
-    try {
-      res.status(200).json({ 
-        status: 'ok', 
-        message: 'Server is healthy',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development',
-        version: '1.0.0'
-      });
-    } catch (error) {
-      console.error('Health check error:', error);
-      res.status(500).json({ 
-        status: 'error', 
-        message: 'Health check failed',
-        timestamp: new Date().toISOString()
-      });
-    }
+    // Must be extremely simple, fast and reliable
+    // DO NOT add any database checks or heavy operations here
+    res.status(200).send('OK');
   });
   
   // Root health check as fallback
