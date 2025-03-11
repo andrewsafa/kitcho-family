@@ -24,10 +24,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
     
-    - name: Use Node.js 18.x
+    - name: Use Node.js 20.x
       uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: 20.x
         cache: 'npm'
         
     - name: Install dependencies
@@ -45,6 +45,16 @@ jobs:
       
     - name: Generate Migrations
       run: npm run generate
+      
+    - name: Cache build artifacts
+      uses: actions/cache@v3
+      with:
+        path: |
+          dist
+          client/dist
+        key: ${{ runner.os }}-build-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-build-
 
   deploy-to-railway:
     needs: build-and-test
@@ -56,14 +66,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
     
-    - name: Use Node.js 18.x
+    - name: Use Node.js 20.x
       uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: 20.x
         cache: 'npm'
+        
+    - name: Restore cached build artifacts
+      uses: actions/cache@v3
+      with:
+        path: |
+          dist
+          client/dist
+        key: ${{ runner.os }}-build-${{ github.sha }}
         
     - name: Install Railway CLI
       run: npm install -g @railway/cli
+      
+    - name: Verify Railway CLI
+      run: railway --version
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       
     - name: Set Railway Project
       run: |
@@ -78,17 +101,18 @@ jobs:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       
     - name: Deploy to Railway
-      run: railway up
+      run: railway up --detach
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         
     - name: Post-deployment verification
       run: |
         echo "Waiting for deployment to complete..."
-        sleep 30
+        sleep 45
         
         # Get the deployed URL
-        RAILWAY_URL=$(railway variables get RAILWAY_STATIC_URL | tr -d '\n')
+        RAILWAY_URL=$(railway variables get RAILWAY_PUBLIC_URL 2>/dev/null || railway variables get RAILWAY_STATIC_URL 2>/dev/null || echo "")
+        RAILWAY_URL=$(echo "$RAILWAY_URL" | tr -d '\n')
         echo "Railway deployed URL: $RAILWAY_URL"
         
         # Check health endpoint
@@ -96,24 +120,39 @@ jobs:
           HEALTH_URL="${RAILWAY_URL}/healthz"
           echo "Running health check against $HEALTH_URL"
           
-          MAX_RETRIES=5
+          MAX_RETRIES=10
           RETRY_COUNT=0
           
           until curl -s -f "$HEALTH_URL" || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
-            echo "Health check failed, retrying in 15 seconds..."
+            echo "Health check failed, retrying in 15 seconds (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)..."
             sleep 15
             RETRY_COUNT=$((RETRY_COUNT + 1))
           done
           
           if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-            echo "Health check failed after $MAX_RETRIES attempts"
+            echo "::warning::Health check failed after $MAX_RETRIES attempts"
+            echo "Checking detailed health status..."
+            curl -v "${RAILWAY_URL}/api/health" || echo "Detailed health check also failed"
             echo "Deployment may still be in progress. Check Railway dashboard."
           else
-            echo "Health check successful!"
+            echo "::notice::Health check successful! Application is running properly."
+            echo "Checking database connection..."
+            curl -s "${RAILWAY_URL}/api/health/db" | jq . || echo "Database health check couldn't be performed"
           fi
         else
-          echo "Could not determine Railway URL. Check Railway dashboard for deployment status."
+          echo "::warning::Could not determine Railway URL. Check Railway dashboard for deployment status."
         fi
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      continue-on-error: true
+      
+    - name: Notify deployment completion
+      run: |
+        if [ -n "$RAILWAY_URL" ]; then
+          echo "::notice::Deployment to Railway complete! Application is available at: $RAILWAY_URL"
+        else
+          echo "::notice::Deployment to Railway complete! Check the Railway dashboard for details."
+        fi
+      env:
+        RAILWAY_URL: ${{ env.RAILWAY_URL }}
       continue-on-error: true
