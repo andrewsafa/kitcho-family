@@ -1,4 +1,4 @@
-# Railway Deployment Guide
+# Railway Deployment Guide for Kitcho Family
 
 This guide provides detailed instructions for deploying the Kitcho Family loyalty program to Railway.
 
@@ -7,7 +7,11 @@ This guide provides detailed instructions for deploying the Kitcho Family loyalt
 1. A Railway account (https://railway.app/)
 2. A GitHub repository with your project code
 3. Basic familiarity with Git and GitHub
-4. Node.js and npm installed locally (for testing)
+4. Node.js 18+ and npm installed locally (for testing)
+
+## Overview
+
+Railway offers the simplest deployment experience with GitHub integration and automated CI/CD. The project includes all necessary configuration files, allowing you to deploy with minimal setup.
 
 ## Step 1: Set Up a Railway Project
 
@@ -18,7 +22,6 @@ This guide provides detailed instructions for deploying the Kitcho Family loyalt
 5. Configure settings:
    - Select the main branch as your deployment branch
    - Enable automatic deployments
-   - Choose "MVC+API" as your project type (if prompted)
 
 ## Step 2: Add a PostgreSQL Database
 
@@ -40,30 +43,36 @@ Once created, Railway will automatically set the `DATABASE_URL` environment vari
 Railway automatically adds several environment variables:
 - `DATABASE_URL`: Generated when you provision a PostgreSQL database
 - `PORT`: Assigned by Railway for your application to listen on
-- `RAILWAY_STATIC_URL`: The public URL of your deployed application
-- `RAILWAY_SERVICE_ID`: The unique ID of your service
+- `RAILWAY_STATIC_URL` or `RAILWAY_PUBLIC_URL`: The public URL of your deployed application
 
 **Important**: Make sure to create and configure the PostgreSQL database BEFORE deploying your application. The application requires a valid DATABASE_URL to start properly.
 
-## Step 4: Configure Deployment Settings
+## Step 4: Railway.toml Configuration
 
-1. Open your project settings
-2. Go to the "Settings" tab
-3. Verify the following settings:
-   - Build Command: `npm run build`
-   - Start Command: `npm run migrate && npm start`
-   - Root Directory: `/` (default)
-   - Health Check Path: `/healthz` (preferred) or `/` (alternative)
-   - Health Check Timeout: `1000` (milliseconds)
+Your project includes the `railway.toml` file for Railway configuration:
 
-These settings are already configured in the `railway.toml` file in your repository. The application includes a comprehensive health check system with multiple endpoints:
+```toml
+[build]
+builder = "nixpacks"
+buildCommand = "npm run generate && npm run build"
 
-- `/healthz`: Primary health check endpoint used by Railway (fast, reliable)
-- `/`: Alternative health check endpoint (can be used as fallback)
-- `/api/health`: Comprehensive health check that includes database status
-- `/api/health/db`: Dedicated database connection check
+[deploy]
+startCommand = "npm run migrate --omit=dev && NODE_ENV=production tsx server/index.ts"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 5000
+restartPolicyType = "on_failure"
+numReplicas = 1
 
-This multi-layered health check system ensures that Railway can properly verify your application's health and provides multiple ways to diagnose issues in production.
+[deploy.env]
+NODE_ENV = "production"
+PORT = "8080"
+```
+
+This configuration handles:
+- Building the application with Nixpacks
+- Running migrations before starting the application
+- Health checks and automatic restarts
+- Environment variables for production mode
 
 ## Step 5: Deploy Your Application
 
@@ -84,13 +93,57 @@ If you configured automatic deployments, Railway will automatically deploy your 
 
 The deployment process typically takes 2-5 minutes, depending on Railway's current load and the complexity of your application.
 
-## Step 6: Set Up Custom Domain (Optional)
+## Step 6: Alternative Deployment Using Railway CLI
+
+You can also deploy using the Railway CLI:
+
+1. Install the Railway CLI:
+   ```bash
+   npm install -g @railway/cli
+   ```
+
+2. Log in to Railway:
+   ```bash
+   railway login
+   ```
+
+3. Link to your project:
+   ```bash
+   railway link
+   ```
+
+4. Deploy the application:
+   ```bash
+   railway up --detach
+   ```
+
+5. Monitor the deployment:
+   ```bash
+   railway status
+   ```
+
+## Step 7: Set Up Custom Domain (Optional)
 
 1. Go to your project's "Settings" tab
 2. Click on "Domains"
 3. Add a custom domain
 4. Follow Railway's instructions to configure your DNS settings
 5. Wait for DNS propagation (this can take up to 48 hours)
+
+## Health Check System
+
+The application includes a comprehensive health check system with multiple endpoints:
+
+- `/healthz`: Primary health check endpoint used by Railway (fast, reliable)
+- `/api/health`: Comprehensive health check that includes database status
+- `/api/health/db`: Dedicated database connection check
+
+This multi-layered health check system ensures that Railway can properly verify your application's health and provides multiple ways to diagnose issues in production.
+
+To check the health status after deployment:
+```bash
+curl https://your-app-url.railway.app/api/health
+```
 
 ## Continuous Integration/Deployment (CI/CD)
 
@@ -108,35 +161,27 @@ To get your Railway token:
 The workflow will:
 1. Build and test your application
 2. Deploy the application to Railway
-3. Railway pulls the updated code and starts a new build
-4. The build process follows the commands in your railway.toml file
-5. Once built, Railway deploys the new version and updates the URL
+3. Verify deployment with health checks
+4. Provide deployment status in the GitHub Actions logs
 
-## Database Migrations
+## Database Migration Process
 
-The Procfile is configured to run migrations automatically before starting the application (`npm run migrate && npm start`). This ensures your database schema is always up-to-date.
+The application includes an enhanced database migration system with the following features:
 
-## Important Notes on package.json
+- Platform detection for Railway-specific optimizations
+- Progressive retry mechanism for reliable migrations
+- Detailed logging and diagnostics
+- Automatic verification of migration integrity
 
-Note that the package.json contains the following scripts that are used for deployment:
-
-```json
-"scripts": {
-  "dev": "tsx server/index.ts",
-  "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-  "start": "NODE_ENV=production node dist/index.js",
-  "check": "tsc",
-  "db:push": "drizzle-kit push",
-  "migrate": "tsx server/migrate.ts",
-  "generate": "drizzle-kit generate:pg"
-}
+The migration process runs automatically during deployment with the command:
+```bash
+npm run migrate --omit=dev
 ```
 
-These scripts handle:
-- Building the application (`npm run build`)
-- Running database migrations (`npm run migrate`) 
-- Starting the server (`npm start`)
-- Generating migrations (`npm run generate`)
+To manually generate migrations after schema changes:
+```bash
+npm run generate
+```
 
 ## Troubleshooting
 
@@ -145,7 +190,7 @@ If you encounter issues during deployment:
 1. Check Railway logs for error messages
 2. Verify environment variables are set correctly
 3. Ensure your database is properly provisioned and linked
-4. Verify the Procfile and railway.toml configurations
+4. Verify the railway.toml configurations
 5. Check that the DATABASE_URL is correctly set and accessible
 
 ### Common Issues and Solutions
@@ -155,9 +200,9 @@ If you encounter issues during deployment:
 If your deployment fails due to health check issues:
 
 1. Verify that the health check path in railway.toml (`/healthz`) matches the actual endpoint in your application
-2. Consider increasing the health check timeout value in railway.toml (currently set to 1000ms)
+2. Check the health check timeout value in railway.toml (currently set to 5000ms)
 3. Check application logs to see if the server is starting properly
-4. Ensure the application is binding to the correct port (Railway sets PORT environment variable)
+4. Try accessing the detailed health endpoint `/api/health` for more diagnostic information
 
 #### Database Connection Issues
 
@@ -167,6 +212,7 @@ If your application can't connect to the database:
 2. Verify that the DATABASE_URL environment variable is correctly linked
 3. Check if database migrations are running successfully 
 4. Review logs for any SQL or connection errors
+5. Try connecting to the database directly using psql to verify credentials
 
 ## Important Notes
 
@@ -176,17 +222,28 @@ If your application can't connect to the database:
 
 ## Managing Database Backups
 
-Railway doesn't provide automatic database backups for all tiers. Consider implementing the following:
+Railway doesn't provide automatic database backups for all tiers. Kitcho Family includes a built-in backup system:
 
-1. Use the backup-scheduler.ts in your application to automate regular database backups
-2. Configure email notifications for backup success/failure
-3. Store backups in secure cloud storage
+1. The `backup-scheduler.ts` component can automate regular database backups
+2. Configure it in the admin dashboard under "System Settings" > "Backup Configuration"
+3. Set up email notifications for backup success/failure
+4. You can also manually export data from the admin dashboard
 
 ## Scaling Your Application
 
 As your application grows:
 
 1. Upgrade your Railway plan for more resources
-2. Consider using a CDN for static assets
-3. Optimize your database queries
-4. Implement caching strategies
+2. Enable multiple replicas in railway.toml (numReplicas setting)
+3. Optimize your database queries and add indexes
+4. Implement caching strategies for frequently accessed data
+5. Consider using a CDN for static assets
+
+## Performance Monitoring
+
+To monitor your application's performance on Railway:
+
+1. Check the "Metrics" tab in your project dashboard
+2. Set up Uptime monitoring to receive alerts if your application goes down
+3. Use the built-in logging to track errors and warnings
+4. Set up GitHub Actions notifications for deployment failures
