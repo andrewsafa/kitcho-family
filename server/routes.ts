@@ -113,6 +113,54 @@ export async function registerRoutes(app: Express) {
   } catch (error) {
     console.error("Error initializing customer passwords:", error);
   }
+  
+  // Health check endpoints for Railway deployment
+  app.get("/healthz", (_req, res) => {
+    // Simple health check endpoint for Railway (fast response)
+    res.status(200).send("OK");
+  });
+  
+  app.get("/api/health", async (_req, res) => {
+    try {
+      // Comprehensive health check including DB connection
+      const dbStatus = await storage.testConnection();
+      res.status(200).json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        version: process.env.npm_package_version || "1.0.0",
+        db: { connected: dbStatus },
+        environment: process.env.NODE_ENV || "development"
+      });
+    } catch (error) {
+      console.error("Health check failed:", error);
+      res.status(500).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  app.get("/api/health/db", async (_req, res) => {
+    try {
+      // Dedicated database health check
+      const dbStatus = await storage.testConnection();
+      res.status(dbStatus ? 200 : 503).json({
+        database: {
+          connected: dbStatus,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      res.status(503).json({
+        database: {
+          connected: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+  });
 
   // Serve static files from public directory
   // Add detailed logging for static file requests
@@ -287,7 +335,7 @@ export async function registerRoutes(app: Express) {
       const updatedCustomer = await storage.updateCustomerVerificationCode(customer.id);
 
       // Set session for customer (optional - if you want to track login state)
-      req.session.customerId = updatedCustomer.id;
+      (req.session as any).customerId = updatedCustomer.id;
 
       // Return customer info with new verification code
       res.json(updatedCustomer);

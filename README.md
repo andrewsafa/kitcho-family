@@ -3,6 +3,53 @@
 ## Web Application
 The web version is currently running and can be accessed at your deployed Replit URL.
 
+## Deployment to Railway with GitHub
+
+This application is configured for easy deployment to Railway with GitHub integration. Below is a quick overview of the deployment process:
+
+### Prerequisites
+- GitHub repository with your code
+- Railway account (https://railway.app)
+- PostgreSQL database (can be provisioned on Railway)
+
+### Deployment Files
+The repository includes all necessary deployment files:
+
+1. `railway.toml` - Railway configuration
+   - Build and deployment settings
+   - Health check configuration
+   - Environment variables
+
+2. `Procfile` - Process file for deployment
+   - Web process command
+   - Database migration commands
+
+3. `.github/workflows/railway.yml` - GitHub Actions workflow
+   - Automated CI/CD pipeline
+   - Test and deployment steps
+   - Verification of deployment
+
+### Health Checks
+The application includes built-in health check endpoints:
+- `/healthz` - Primary health check (fast)
+- `/api/health` - Comprehensive system health
+- `/api/health/db` - Database connection status
+
+### Deployment Process
+1. Connect your GitHub repository to Railway
+2. Set up a PostgreSQL database in Railway
+3. Configure environment variables (NODE_ENV, SESSION_SECRET)
+4. Deploy the application
+5. Monitor logs and health status
+
+### Database Migrations
+Migrations run automatically during deployment through the command:
+```
+npm run migrate --omit=dev
+```
+
+For detailed instructions, see [RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md).
+
 ## Mobile Application Development
 To develop the mobile version:
 
