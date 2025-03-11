@@ -5,7 +5,7 @@ buildCommand = "npm run build"
 [deploy]
 startCommand = "npm run migrate && npm start"
 healthcheckPath = "/healthz"
-healthcheckTimeout = 300
+healthcheckTimeout = 1000
 restartPolicyType = "on_failure"
 numReplicas = 1
 
