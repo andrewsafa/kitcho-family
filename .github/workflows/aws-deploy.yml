@@ -1,4 +1,5 @@
-name: Deploy to AWS Elastic Beanstalk
+name: Deploy to Railway
+
 on:
   push:
     branches: [ main ]
@@ -6,33 +7,26 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Node.js
+    
+    - name: Use Node.js 18.x
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: 18.x
         cache: 'npm'
-
+        
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli
+        
     - name: Install dependencies
       run: npm ci
-
-    - name: Build application
-      run: npm run build
-
-    - name: Generate deployment package
-      run: zip -r deploy.zip . -x "*.git*" "node_modules/*"
-
-    - name: Deploy to EB
-      uses: einaregilsson/beanstalk-deploy@v21
-      with:
-        aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        application_name: kitcho-family
-        environment_name: kitcho-family-prod
-        version_label: ${{ github.sha }}
-        region: us-east-1
-        deployment_package: deploy.zip
-        wait_for_deployment: true
+      
+    - name: Generate Migrations
+      run: npm run generate
+      
+    - name: Deploy to Railway
+      run: railway up
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

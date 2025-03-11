@@ -1,142 +1,88 @@
-# Railway Deployment Guide for Kitcho Family Loyalty Program
+# Railway Deployment Guide for Kitcho Family
 
-This guide walks you through the process of deploying the Kitcho Family Loyalty Program to Railway via GitHub.
+This guide outlines the step-by-step process to deploy the Kitcho Family loyalty program application to Railway.app using GitHub integration.
 
 ## Prerequisites
 
-1. A GitHub account
-2. A Railway account (https://railway.app/)
-3. Your Kitcho Family project code
+1. A GitHub account with your Kitcho Family repository
+2. A Railway.app account
+3. Basic familiarity with deploying Node.js applications
 
-## Step 1: Create a GitHub Repository
+## Step 1: Prepare Your Repository
 
-1. Go to GitHub (https://github.com) and log in to your account
-2. Click on the "+" icon in the top-right corner and select "New repository"
-3. Name your repository (e.g., "kitcho-family-loyalty")
-4. Choose "Public" or "Private" repository visibility as needed
-5. Click "Create repository"
+Before deploying, ensure your repository is ready:
 
-## Step 2: Push Your Code to GitHub
+- All code is committed and pushed to GitHub
+- The `Procfile` is set up correctly (already configured with `web: npm run migrate && npm start`)
+- The `railway.toml` configuration file is present (already configured)
+- Database migrations are generated (using `scripts/generate-migrations.js`)
 
-1. Initialize Git in your project directory (if not already done):
-   ```bash
-   git init
-   ```
+## Step 2: Connect Railway to GitHub
 
-2. Add all your files to the Git repository:
-   ```bash
-   git add .
-   ```
-
-3. Make your first commit:
-   ```bash
-   git commit -m "Initial commit"
-   ```
-
-4. Add your GitHub repository as a remote:
-   ```bash
-   git remote add origin https://github.com/YOUR_USERNAME/kitcho-family-loyalty.git
-   ```
-
-5. Push your code to GitHub:
-   ```bash
-   git push -u origin main
-   ```
-
-## Step 3: Connect Railway to GitHub
-
-1. Go to Railway (https://railway.app/) and log in to your account
-2. Click on "New Project"
+1. Log in to your Railway.app account
+2. Navigate to the dashboard and click "New Project"
 3. Select "Deploy from GitHub repo"
-4. If you haven't connected your GitHub account yet, click "Connect GitHub" and follow the instructions
-5. Once connected, select your "kitcho-family-loyalty" repository
-6. Railway will automatically detect the railway.toml and Procfile configuration files
+4. Choose the GitHub repository containing your Kitcho Family application
+5. Authorize Railway to access your GitHub repositories if prompted
 
-## Step 4: Add PostgreSQL Database on Railway
+## Step 3: Configure the Project in Railway
 
-1. In your new Railway project, click on "New Service"
-2. Select "Database" > "PostgreSQL"
-3. Railway will provision a PostgreSQL database and automatically inject the `DATABASE_URL` as an environment variable
+1. Once your project is created, navigate to the "Variables" tab
+2. Add the following environment variables:
+   - `SESSION_SECRET` - A secure random string for session management
+   - `NODE_ENV` - Set to "production"
+   - Any other environment variables your application requires
 
-## Step 5: Configure Environment Variables
+2. If not automatically provisioned, add a PostgreSQL database:
+   - Click "New" and select "Database"
+   - Choose "PostgreSQL"
+   - Once provisioned, Railway will automatically add the `DATABASE_URL` variable to your project
 
-1. Click on your web service (the one deployed from GitHub)
-2. Navigate to the "Variables" tab
-3. Railway will have automatically added the `DATABASE_URL` from your PostgreSQL service
-4. Add the following additional variables:
-   - `NODE_ENV=production`
-   - `SESSION_SECRET=your-secure-session-secret` (use a strong random string)
+## Step 4: Link Services
 
-## Step 6: Run Database Migrations
+1. In your project, navigate to the "Settings" tab
+2. Under "Linked Services," ensure your PostgreSQL database is linked to your application
+3. This enables Railway to inject the correct `DATABASE_URL` environment variable
 
-In Railway, you can run a one-time command to set up your database schema:
+## Step 5: Deploy
 
-1. Click on your web service
-2. Go to the "Settings" tab
-3. Scroll down to "Custom Deploy Command"
-4. Enter: `npm run migrate`
-5. Click "Save"
-6. Deploy your application (this will run the migration first)
+1. Railway will automatically deploy your application based on the GitHub integration
+2. If you need to trigger a deployment manually:
+   - Navigate to the "Deployments" tab
+   - Click "Deploy Now"
 
-## Step 7: Monitor Deployment
+## Step 6: Verify Deployment
 
-1. Click on the "Deployments" tab to see the deployment progress
-2. You can view logs to ensure everything is working correctly
-3. Once deployed, click on the URL provided by Railway to open your application
+1. Once deployed, Railway will provide a URL for your application
+2. Navigate to this URL to ensure your application is running correctly
+3. Check the logs in the Railway dashboard to troubleshoot any issues
 
-## Step 8: Set Up a Custom Domain (Optional)
+## Continuous Deployment
 
-1. In your web service, navigate to the "Settings" tab
-2. Scroll down to "Domains"
-3. Click "Add Domain"
-4. Enter your custom domain (e.g., kitchofamily.com)
-5. Follow the DNS configuration instructions provided by Railway
-6. Wait for DNS propagation (may take up to 24 hours)
+With GitHub integration, Railway will automatically deploy new changes when you push to your repository. The process works as follows:
 
-## Step 9: Set Up Continuous Deployment
+1. You push changes to your GitHub repository
+2. Railway detects the changes via webhook
+3. Railway pulls the updated code and starts a new build
+4. The build process follows the commands in your railway.toml file
+5. Once built, Railway deploys the new version and updates the URL
 
-Railway automatically sets up continuous deployment. Whenever you push changes to your GitHub repository, Railway will automatically redeploy your application.
+## Database Migrations
+
+The Procfile is configured to run migrations automatically before starting the application (`npm run migrate && npm start`). This ensures your database schema is always up-to-date.
 
 ## Troubleshooting
 
-### Database Connection Issues
-- Verify that the `DATABASE_URL` environment variable is correctly set
-- Check the database service is running in Railway
+If you encounter issues during deployment:
 
-### Build Failures
-- Check the deployment logs for specific error messages
-- Ensure all required dependencies are listed in package.json
-- Verify that the build script is correctly defined in railway.toml
+1. Check Railway logs for error messages
+2. Verify environment variables are set correctly
+3. Ensure your database is properly provisioned and linked
+4. Verify the Procfile and railway.toml configurations
+5. Check that the DATABASE_URL is correctly set and accessible
 
-### Runtime Errors
-- View application logs in Railway's "Deployments" tab
-- Look for error messages in the console
-- Check the environment variables for any missing configurations
+## Important Notes
 
-## Reverting to Previous Deployment
-
-If a deployment fails or has issues:
-
-1. Go to the "Deployments" tab
-2. Find the last successful deployment
-3. Click on the three dots menu (⋮)
-4. Select "Redeploy"
-
-## Best Practices
-
-1. **Environment Variables**: Never commit sensitive information like API keys or passwords to your repository. Always use environment variables.
-
-2. **Database Backups**: Regularly backup your database using Railway's PostgreSQL backup features.
-
-3. **Monitoring**: Set up monitoring to track the performance and availability of your application.
-
-4. **Error Tracking**: Consider adding error tracking tools like Sentry to catch and fix issues quickly.
-
-5. **Security Headers**: Implement security headers for your application to protect against common web vulnerabilities.
-
-## Support
-
-If you encounter issues with Railway deployment, you can:
-- Check Railway's documentation: https://docs.railway.app/
-- Contact Railway support through their website
-- Open an issue in your GitHub repository
+- Railway provides an ephemeral filesystem. Any files written during runtime (like uploads) will not persist after application restarts. Use external storage services for persistent file storage.
+- For production deployments, ensure that your SESSION_SECRET is a secure random string and is kept confidential.
+- Monitor your application performance and logs in the Railway dashboard.
