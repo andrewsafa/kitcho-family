@@ -1,14 +1,42 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm run generate && npm run build"
+builder = "NIXPACKS"
+buildCommand = "npm install && npm run build"
 
 [deploy]
-startCommand = "npm run migrate --omit=dev && NODE_ENV=production node dist/index.js"
+startCommand = "npm start"
 healthcheckPath = "/healthz"
-healthcheckTimeout = 5000
-restartPolicyType = "on_failure"
-numReplicas = 1
+healthcheckTimeout = 10
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
 
-[deploy.env]
+[variables]
 NODE_ENV = "production"
-PORT = "8080"
+
+[[services]]
+name = "kitcho-family"
+internal_port = 5000
+health_check_path = "/healthz"
+health_check_timeout_seconds = 10
+
+[[services.ports]]
+handlers = ["http"]
+port = "80"
+
+[[services.ports]]
+handlers = ["tls", "http"]
+port = "443"
+
+[[services.tcp_checks]]
+grace_period = "1s"
+interval = "15s"
+restart_limit = 3
+timeout = "2s"
+
+[[services.http_checks]]
+grace_period = "5s"
+interval = "10s"
+method = "get"
+path = "/healthz"
+protocol = "http"
+restart_limit = 3
+timeout = "2s"
