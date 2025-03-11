@@ -3,16 +3,20 @@
 ## Web Application
 The web version is currently running and can be accessed at your deployed Replit URL.
 
-## Deployment to Railway with GitHub
+## Deployment Options
 
-This application is configured for easy deployment to Railway with GitHub integration. Below is a quick overview of the deployment process:
+This application supports deployment to multiple cloud platforms:
 
-### Prerequisites
+### 1. Railway with GitHub (Primary)
+
+This application is configured for easy deployment to Railway with GitHub integration:
+
+#### Prerequisites
 - GitHub repository with your code
 - Railway account (https://railway.app)
 - PostgreSQL database (can be provisioned on Railway)
 
-### Deployment Files
+#### Deployment Files
 The repository includes all necessary deployment files:
 
 1. `railway.toml` - Railway configuration
@@ -28,6 +32,31 @@ The repository includes all necessary deployment files:
    - Automated CI/CD pipeline
    - Test and deployment steps
    - Verification of deployment
+
+For detailed instructions, see [RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md).
+
+### 2. AWS Elastic Beanstalk (Alternative)
+
+The application can also be deployed to AWS using Elastic Beanstalk:
+
+#### Prerequisites
+- AWS account with appropriate permissions
+- AWS CLI and EB CLI installed
+- PostgreSQL database (Amazon RDS)
+
+#### Deployment Files
+The repository includes AWS deployment configuration:
+
+1. `.ebextensions/` - EB configuration files
+   - Environment settings
+   - Database migration commands
+   - Node.js configuration
+
+2. `.github/workflows/aws.yml` - GitHub Actions workflow for AWS
+   - Automated CI/CD pipeline
+   - Elastic Beanstalk deployment
+
+For detailed AWS deployment instructions, see [AWS_DEPLOYMENT_GUIDE.md](./AWS_DEPLOYMENT_GUIDE.md).
 
 ### Health Checks
 The application includes built-in health check endpoints:
