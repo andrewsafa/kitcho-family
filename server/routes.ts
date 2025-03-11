@@ -111,6 +111,33 @@ export async function registerRoutes(app: Express) {
     res.status(200).json({ status: 'ok', message: 'Kitcho Family API is running' });
   });
 
+  // Add database health check endpoint
+  app.get('/api/health/db', async (_req, res) => {
+    try {
+      const isConnected = await storage.testConnection();
+      if (isConnected) {
+        res.status(200).json({ 
+          status: 'ok', 
+          message: 'Database connection successful',
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(503).json({ 
+          status: 'error', 
+          message: 'Database connection failed',
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ 
+        status: 'error', 
+        message: 'Error checking database connection',
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Set up authentication
   setupAuth(app);
 

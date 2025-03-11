@@ -111,16 +111,17 @@ The Procfile is configured to run migrations automatically before starting the a
 
 ## Important Notes on package.json
 
-Note that the package.json file contains two scripts sections. The following scripts should be used for deployment:
+Note that the package.json contains the following scripts that are used for deployment:
 
 ```json
 "scripts": {
-  "build": "vite build",
-  "dev": "tsx watch server/index.ts",
-  "start": "NODE_ENV=production tsx server/index.ts",
+  "dev": "tsx server/index.ts",
+  "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+  "start": "NODE_ENV=production node dist/index.js",
+  "check": "tsc",
+  "db:push": "drizzle-kit push",
   "migrate": "tsx server/migrate.ts",
-  "generate": "drizzle-kit generate:pg",
-  "studio": "drizzle-kit studio"
+  "generate": "drizzle-kit generate:pg"
 }
 ```
 
