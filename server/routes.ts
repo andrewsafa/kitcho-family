@@ -97,6 +97,16 @@ function requirePartner(req: any, res: any, next: any) {
 }
 
 export async function registerRoutes(app: Express) {
+  // Add health check endpoints for Railway deployment
+  app.get('/healthz', (_req, res) => {
+    res.status(200).json({ status: 'ok', message: 'Server is healthy' });
+  });
+  
+  // Add root health check as fallback
+  app.get('/', (_req, res) => {
+    res.status(200).json({ status: 'ok', message: 'Kitcho Family API is running' });
+  });
+
   // Set up authentication
   setupAuth(app);
 
