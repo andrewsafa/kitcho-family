@@ -76,7 +76,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  const port = 5000;
+  // Use PORT environment variable provided by Railway or default to 5000
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
   server.listen({
     port,
     host: "0.0.0.0",
