@@ -87,6 +87,14 @@
     "zod": "^3.24.2",
     "zod-validation-error": "^3.4.0"
   },
+  "scripts": {
+    "build": "vite build",
+    "dev": "tsx watch server/index.ts",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "migrate": "tsx server/migrate.ts",
+    "generate": "drizzle-kit generate:pg",
+    "studio": "drizzle-kit studio"
+  },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.0.4",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",

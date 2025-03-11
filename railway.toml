@@ -11,3 +11,7 @@ numReplicas = 1
 
 [deploy.env]
 NODE_ENV = "production"
+
+# Database will be provisioned by Railway
+# You don't need to set DATABASE_URL manually as Railway
+# will inject it automatically when you link a PostgreSQL service
