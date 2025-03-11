@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD for Railway Deployment
 
 on:
   push:
@@ -7,29 +7,52 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x]
 
     steps:
     - uses: actions/checkout@v3
     
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Use Node.js 18.x
       uses: actions/setup-node@v3
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 18.x
         cache: 'npm'
         
     - name: Install dependencies
       run: npm ci
       
+    - name: Check TypeScript
+      run: npm run check
+      
     - name: Build
       run: npm run build
       
-    - name: Type check
-      run: npm run check
+    # Add test step when tests are implemented
+    # - name: Test
+    #   run: npm test
+
+  deploy-to-railway:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18.x
+        cache: 'npm'
+        
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli
       
-    # Add more steps as needed for testing, linting, etc.
+    - name: Generate Migrations
+      run: npm run generate
+      
+    - name: Deploy to Railway
+      run: railway up
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

@@ -71,6 +71,27 @@ With GitHub integration, Railway will automatically deploy new changes when you 
 
 The Procfile is configured to run migrations automatically before starting the application (`npm run migrate && npm start`). This ensures your database schema is always up-to-date.
 
+## Important Notes on package.json
+
+Note that the package.json file contains two scripts sections. The following scripts should be used for deployment:
+
+```json
+"scripts": {
+  "build": "vite build",
+  "dev": "tsx watch server/index.ts",
+  "start": "NODE_ENV=production tsx server/index.ts",
+  "migrate": "tsx server/migrate.ts",
+  "generate": "drizzle-kit generate:pg",
+  "studio": "drizzle-kit studio"
+}
+```
+
+These scripts handle:
+- Building the application (`npm run build`)
+- Running database migrations (`npm run migrate`) 
+- Starting the server (`npm start`)
+- Generating migrations (`npm run generate`)
+
 ## Troubleshooting
 
 If you encounter issues during deployment:
