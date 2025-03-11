@@ -4,13 +4,25 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
     
     - name: Use Node.js 18.x
       uses: actions/setup-node@v3
@@ -35,9 +47,22 @@ jobs:
         mkdir -p deploy
         cp -r dist deploy/
         cp -r migrations deploy/
+        cp -r scripts deploy/
         cp -r .ebextensions deploy/
-        cp package.json package-lock.json deploy/
+        cp -r public deploy/
+        cp package.json package-lock.json Procfile deploy/
         cd deploy && zip -r ../deploy.zip .
+      
+    - name: Set Environment Name
+      id: env-name
+      run: |
+        if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+          echo "::set-output name=env_name::kitcho-family-staging"
+        elif [ "${{ github.event.inputs.environment }}" == "development" ]; then
+          echo "::set-output name=env_name::kitcho-family-dev"
+        else
+          echo "::set-output name=env_name::kitcho-family-production"
+        fi
       
     - name: Deploy to Elastic Beanstalk
       uses: einaregilsson/beanstalk-deploy@v21
@@ -45,8 +70,29 @@ jobs:
         aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         application_name: kitcho-family
-        environment_name: kitcho-family-production
+        environment_name: ${{ steps.env-name.outputs.env_name }}
         version_label: kitcho-family-${{ github.sha }}
         region: ${{ secrets.AWS_REGION }}
         deployment_package: deploy.zip
         wait_for_environment_recovery: 300
+        
+    - name: Post-deployment health check
+      run: |
+        HEALTH_URL="http://${{ steps.env-name.outputs.env_name }}.elasticbeanstalk.com/healthz"
+        echo "Running health check against $HEALTH_URL"
+        MAX_RETRIES=10
+        RETRY_COUNT=0
+        
+        until curl -s -f "$HEALTH_URL" || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
+          echo "Health check failed, retrying in 30 seconds..."
+          sleep 30
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+        done
+        
+        if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+          echo "Health check failed after $MAX_RETRIES attempts"
+          exit 1
+        else
+          echo "Health check successful!"
+        fi
+      continue-on-error: true
