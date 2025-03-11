@@ -43,10 +43,16 @@ The application includes built-in health check endpoints:
 5. Monitor logs and health status
 
 ### Database Migrations
-Migrations run automatically during deployment through the command:
+Migrations run automatically during deployment through our dedicated migration script:
 ```
-npm run migrate --omit=dev
+tsx server/migrate.ts
 ```
+
+This script:
+1. Verifies database connection
+2. Applies schema changes via drizzle-kit
+3. Initializes customer verification codes and passwords
+4. Reports migration status
 
 For detailed instructions, see [RAILWAY_DEPLOYMENT_GUIDE.md](./RAILWAY_DEPLOYMENT_GUIDE.md).
 
