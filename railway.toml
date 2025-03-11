@@ -3,14 +3,15 @@ builder = "nixpacks"
 buildCommand = "npm run generate && npm run build"
 
 [deploy]
-startCommand = "npm run migrate && npm start"
+startCommand = "npm run migrate --omit=dev && NODE_ENV=production tsx server/index.ts"
 healthcheckPath = "/healthz"
-healthcheckTimeout = 1000
+healthcheckTimeout = 5000
 restartPolicyType = "on_failure"
 numReplicas = 1
 
 [deploy.env]
 NODE_ENV = "production"
+PORT = "8080"
 
 # Required Environment Variables
 # These must be set in Railway's dashboard for proper functioning
