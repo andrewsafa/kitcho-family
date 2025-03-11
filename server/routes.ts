@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
 import { insertCustomerSchema, insertPointTransactionSchema, insertLevelBenefitSchema, insertSpecialOfferSchema, insertPartnerSchema } from "@shared/schema";
@@ -89,9 +89,13 @@ const upload = multer({
 });
 
 // Middleware to check if a partner is authenticated
-function requirePartner(req: any, res: any, next: any) {
+function requirePartner(req: any, res: Response, next: NextFunction) {
   if (!req.session.partnerId) {
     return res.status(401).json({ message: "Not authenticated" });
+  }
+  // Ensure partnerId exists as a valid number
+  if (typeof req.session.partnerId !== 'number') {
+    req.session.partnerId = parseInt(req.session.partnerId, 10);
   }
   next();
 }
@@ -759,9 +763,11 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/partner/me", requirePartner, async (req, res) => {
+  app.get("/api/partner/me", requirePartner, async (req: any, res) => {
     try {
-      const partner = await storage.getPartner(req.session.partnerId);
+      // partnerId is now guaranteed to be a number by the requirePartner middleware
+      const partnerId = req.session.partnerId as number;
+      const partner = await storage.getPartner(partnerId);
       if (!partner) {
         return res.status(404).json({ message: "Partner not found" });
       }
