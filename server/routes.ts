@@ -131,6 +131,33 @@ export async function registerRoutes(app: Express) {
   });
 
   // Comprehensive health check endpoint including database status
+  // Optimized /healthz endpoint specifically for Railway's health checks
+  // This endpoint is designed to be fast and reliable
+  app.get('/healthz', (_req, res) => {
+    // Immediately respond with 200 OK to indicate the server is running
+    // Railway only needs to know the service is up and responding to requests
+    res.status(200).send('OK');
+  });
+
+  // /api/health/db endpoint specifically for database connection checks
+  app.get('/api/health/db', async (_req, res) => {
+    try {
+      const isDbConnected = await storage.testConnection();
+      res.status(isDbConnected ? 200 : 503).json({
+        status: isDbConnected ? 'ok' : 'error',
+        message: isDbConnected ? 'Database connected' : 'Database connection failed'
+      });
+    } catch (error) {
+      console.error('Database health check error:', error);
+      res.status(503).json({
+        status: 'error',
+        message: 'Database connection check failed',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Comprehensive health check endpoint including database status
   app.get('/api/health', async (_req, res) => {
     try {
       // Check database connection
