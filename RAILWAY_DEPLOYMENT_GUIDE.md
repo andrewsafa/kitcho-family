@@ -35,9 +35,15 @@ Once created, Railway will automatically set the `DATABASE_URL` environment vari
 2. Click on "Variables"
 3. Add the following environment variables:
    - `NODE_ENV`: Set to `production`
-   - `SESSION_SECRET`: A long, random string for secure sessions
+   - `SESSION_SECRET`: A long, random string for secure sessions (e.g., use a password generator to create a 32+ character string)
 
-Railway automatically adds the `DATABASE_URL` variable when you provision a database, so you don't need to add it manually.
+Railway automatically adds several environment variables:
+- `DATABASE_URL`: Generated when you provision a PostgreSQL database
+- `PORT`: Assigned by Railway for your application to listen on
+- `RAILWAY_STATIC_URL`: The public URL of your deployed application
+- `RAILWAY_SERVICE_ID`: The unique ID of your service
+
+**Important**: Make sure to create and configure the PostgreSQL database BEFORE deploying your application. The application requires a valid DATABASE_URL to start properly.
 
 ## Step 4: Configure Deployment Settings
 
@@ -47,11 +53,20 @@ Railway automatically adds the `DATABASE_URL` variable when you provision a data
    - Build Command: `npm run build`
    - Start Command: `npm run migrate && npm start`
    - Root Directory: `/` (default)
-   - Health Check Path: `/` (default)
+   - Health Check Path: `/healthz` (preferred) or `/` (alternative)
+   - Health Check Timeout: `300` (milliseconds)
 
-These settings are also configured in the `railway.toml` file in your repository.
+These settings are already configured in the `railway.toml` file in your repository. The application includes dedicated health check endpoints at both `/healthz` and `/` to ensure Railway can properly verify that your application is running.
 
 ## Step 5: Deploy Your Application
+
+⚠️ **Important: Deployment Order Matters** ⚠️
+
+For successful deployment, follow this specific order:
+
+1. Set up the PostgreSQL database first
+2. Configure all environment variables (NODE_ENV, SESSION_SECRET)
+3. Then deploy your application
 
 If you configured automatic deployments, Railway will automatically deploy your application whenever you push changes to your main branch. Otherwise:
 
@@ -59,6 +74,8 @@ If you configured automatic deployments, Railway will automatically deploy your 
 2. Click "Deploy Now"
 3. Select the main branch
 4. Wait for the deployment to complete
+
+The deployment process typically takes 2-5 minutes, depending on Railway's current load and the complexity of your application.
 
 ## Step 6: Set Up Custom Domain (Optional)
 
@@ -122,6 +139,26 @@ If you encounter issues during deployment:
 3. Ensure your database is properly provisioned and linked
 4. Verify the Procfile and railway.toml configurations
 5. Check that the DATABASE_URL is correctly set and accessible
+
+### Common Issues and Solutions
+
+#### Health Check Failures
+
+If your deployment fails due to health check issues:
+
+1. Verify that the health check path in railway.toml (`/healthz`) matches the actual endpoint in your application
+2. Increase the health check timeout value in railway.toml (currently set to 300ms)
+3. Check application logs to see if the server is starting properly
+4. Ensure the application is binding to the correct port (Railway sets PORT environment variable)
+
+#### Database Connection Issues
+
+If your application can't connect to the database:
+
+1. Make sure the PostgreSQL service is provisioned and running
+2. Verify that the DATABASE_URL environment variable is correctly linked
+3. Check if database migrations are running successfully 
+4. Review logs for any SQL or connection errors
 
 ## Important Notes
 
