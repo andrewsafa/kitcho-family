@@ -119,6 +119,31 @@ git push -u origin main
 
 ### Production Deployment Options
 
+#### Railway Deployment
+1. Connect your GitHub repository to Railway:
+   - Create a Railway account at https://railway.app/
+   - Click on "New Project" and select "Deploy from GitHub repo"
+   - Select your GitHub repository
+   - Railway will automatically detect the Railway configuration files
+
+2. Add PostgreSQL Database:
+   - Click on "New Service" and select "Database" > "PostgreSQL"
+   - The DATABASE_URL will be automatically injected as an environment variable
+
+3. Configure Environment Variables:
+   - Click on your web service, then navigate to "Variables"
+   - Add necessary environment variables:
+     - NODE_ENV=production
+     - SESSION_SECRET=your-secure-session-secret
+
+4. Deploy:
+   - Railway will automatically deploy your application
+   - You can view deployment logs and status in the Railway dashboard
+
+5. Custom Domain (Optional):
+   - In your service settings, navigate to "Settings" > "Domains"
+   - Add your custom domain and follow the instructions for DNS configuration
+
 #### Azure Web App Service
 - Follow Azure deployment guide in `docs/azure-deployment.md`
 - Configure environment variables in Azure App Service
