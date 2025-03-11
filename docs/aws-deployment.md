@@ -1,6 +1,26 @@
 # AWS Elastic Beanstalk Deployment Guide
 
-This guide walks you through deploying the Kitcho Family loyalty program to AWS Elastic Beanstalk with an RDS PostgreSQL database.
+This guide provides detailed instructions for deploying the Kitcho Family loyalty program to AWS Elastic Beanstalk with an RDS PostgreSQL database.
+
+## Overview
+
+Deploying to AWS Elastic Beanstalk offers several benefits:
+- Managed infrastructure that automatically handles capacity provisioning, load balancing, and scaling
+- Easy integration with RDS for database management
+- Built-in monitoring and health check system
+- Simple deployment process through CLI or GitHub Actions
+
+## Deployment Order Summary
+
+For a successful deployment, follow this specific order:
+
+1. Initialize Elastic Beanstalk application (`eb init`)
+2. Create and configure RDS PostgreSQL database
+3. Set up required environment variables
+4. Create Elastic Beanstalk environment (`eb create`)
+5. Deploy your application (`eb deploy` or GitHub Actions)
+6. Configure security groups for database access
+7. Verify deployment and check logs if needed
 
 ## Prerequisites
 
@@ -16,6 +36,16 @@ Ensure your application is properly configured for AWS deployment:
 - The `.ebextensions/nodecommand.config` file is present and correctly configured
 - Your `package.json` has the appropriate scripts for building and running the application
 - Database migration scripts are in place
+- The health check endpoint is properly configured (`/healthz`)
+
+### Key Files for AWS Deployment
+
+| File | Purpose |
+|------|---------|
+| `.ebextensions/nodecommand.config` | Configures Elastic Beanstalk Node.js environment |
+| `.github/workflows/aws-deploy.yml` | GitHub Actions workflow for automated deployment |
+| `server/migrate.ts` | Database migration script |
+| `server/routes.ts` | API routes including health check endpoints |
 
 ### Important Notes on package.json
 
@@ -38,6 +68,16 @@ These scripts handle:
 - Running database migrations (`npm run migrate`) 
 - Starting the server (`npm start`)
 - Generating migrations (`npm run generate`)
+
+### Health Check System
+
+The application includes a comprehensive health check system with multiple endpoints:
+
+- `/healthz`: Primary health check endpoint used by Elastic Beanstalk (fast, reliable)
+- `/api/health`: Comprehensive health check that includes database status
+- `/api/health/db`: Dedicated database connection check
+
+These endpoints are used by Elastic Beanstalk to determine if your application is running properly. The primary health check endpoint (`/healthz`) returns a simple "OK" response, making it ideal for frequent health checks.
 
 ## Step 2: Initialize Elastic Beanstalk Application
 
@@ -79,20 +119,34 @@ eb init
    - Monitoring options as needed
 10. Create database
 
-## Step 4: Connect Your Application to RDS
+## Step 4: Configure Environment Variables
 
-You need to provide the database connection string to your application:
+Configure the required environment variables for your application:
 
 1. In the EB Console, go to your environment
 2. Click on "Configuration"
 3. Under "Software," click "Edit"
-4. Add an environment property:
-   - Key: `DATABASE_URL`
-   - Value: `postgresql://username:password@your-db-endpoint:5432/kitcho_family`
-5. Add another environment property:
-   - Key: `SESSION_SECRET`
-   - Value: A secure random string
-6. Apply changes
+4. Add the following environment properties:
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `NODE_ENV` | `production` | Set the application to production mode |
+| `PORT` | `8081` | Port for your application to listen on |
+| `DATABASE_URL` | `postgresql://username:password@your-db-endpoint:5432/kitcho_family` | Connection string for your RDS database |
+| `SESSION_SECRET` | A long, random string | Used for secure session management |
+
+5. Apply changes
+
+**Important Notes on Environment Variables:**
+
+- The `NODE_ENV` and `PORT` variables are already configured in `.ebextensions/nodecommand.config` but can be overridden here if needed
+- Elastic Beanstalk sets several environment variables automatically like `PORT` (usually 8081) and `AWS_REGION`
+- Make sure to create a secure `SESSION_SECRET` - this should be a long, random string to ensure session security
+- The `DATABASE_URL` must include the correct credentials, hostname, and database name
+
+**Security Considerations:**
+- Never commit sensitive credentials to your repository
+- Consider using AWS Secrets Manager or Parameter Store for sensitive data in production
 
 ## Step 5: Create Elastic Beanstalk Environment
 
@@ -203,3 +257,32 @@ The workflow will:
 - Scale up or out your EB environment
 - Check RDS performance metrics
 - Consider adding caching layers (ElastiCache)
+
+## Comparison with Railway Deployment
+
+This project supports deployment to both AWS Elastic Beanstalk and Railway. Here's a comparison to help you choose the right platform:
+
+| Feature | AWS Elastic Beanstalk | Railway |
+|---------|----------------------|---------|
+| **Setup Complexity** | More complex, requires AWS expertise | Simpler, developer-friendly |
+| **Cost** | Pay for resources used, more granular control | Subscription-based pricing |
+| **Scaling** | Highly customizable, auto-scaling | Limited customization, auto-scaling available |
+| **Database** | RDS PostgreSQL (separate service) | Integrated PostgreSQL |
+| **Deployment Process** | EB CLI or GitHub Actions | Railway CLI or GitHub integration |
+| **Custom Domain** | Requires Route 53 or DNS configuration | Integrated custom domain setup |
+| **Monitoring** | CloudWatch (comprehensive) | Built-in logging and metrics |
+| **Backup System** | Automated RDS backups | Limited database backup options |
+
+**When to choose AWS:**
+- For enterprise deployments requiring compliance with specific regulations
+- When you need maximum control over infrastructure
+- For large-scale applications with complex needs
+- When you're already using other AWS services
+
+**When to choose Railway:**
+- For faster development and deployment cycles
+- For simpler projects with standard requirements
+- When you prefer a streamlined developer experience
+- When minimizing DevOps overhead is important
+
+Both platforms will work well with this application, as it's designed to be deployment-platform agnostic with appropriate configuration files for each environment.
