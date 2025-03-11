@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm run build"
+buildCommand = "npm run generate && npm run build"
 
 [deploy]
 startCommand = "npm run migrate && npm start"
@@ -12,15 +12,30 @@ numReplicas = 1
 [deploy.env]
 NODE_ENV = "production"
 
-# Secrets and environment variables
-# Make sure to set these in Railway's dashboard
-# - SESSION_SECRET: Used for secure session management
+# Required Environment Variables
+# These must be set in Railway's dashboard for proper functioning
+# - SESSION_SECRET: A long, random string used for secure session management
+# - DATABASE_URL: Connection string for PostgreSQL (auto-injected when linking a PostgreSQL service)
 
-# PostgreSQL Database Configuration
-# The DATABASE_URL will be automatically injected by Railway
-# when you link a PostgreSQL service to this project
+# Optional Environment Variables
+# - LOG_LEVEL: Set logging verbosity (default: "info")
+# - PORT: Custom port for the application (default: assigned by Railway)
 
-# File System and Static Assets
+# Health Check System
+# The application provides multiple health check endpoints:
+# - /healthz: Primary health check (fast, reliable)
+# - /api/health: Comprehensive health check including database status
+# - /api/health/db: Database-specific health check
+
+# Deployment Best Practices
+# 1. Always provision the PostgreSQL database first
+# 2. Configure environment variables (especially SESSION_SECRET)
+# 3. Deploy the application
+# 4. Wait for health checks to pass
+# 5. Verify functionality through the application URL
+
+# File System Limitations
 # Railway provides an ephemeral filesystem, which means
-# any files written during runtime will not persist after restarts
-# Use external storage services for persistent file storage if needed
+# any files written during runtime will not persist after restarts.
+# For persistent storage of user uploads or generated content,
+# consider using cloud storage services like AWS S3.

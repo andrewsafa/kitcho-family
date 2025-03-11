@@ -5,13 +5,24 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
     
     - name: Use Node.js 18.x
       uses: actions/setup-node@v3
@@ -31,14 +42,19 @@ jobs:
     # Add test step when tests are implemented
     # - name: Test
     #   run: npm test
+      
+    - name: Generate Migrations
+      run: npm run generate
 
   deploy-to-railway:
     needs: build-and-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
     
     - name: Use Node.js 18.x
       uses: actions/setup-node@v3
@@ -49,10 +65,55 @@ jobs:
     - name: Install Railway CLI
       run: npm install -g @railway/cli
       
-    - name: Generate Migrations
-      run: npm run generate
+    - name: Set Railway Project
+      run: |
+        if [ "${{ github.event.inputs.environment }}" == "preview" ]; then
+          echo "Using preview environment"
+          railway link --environment preview
+        else
+          echo "Using production environment"
+          railway link
+        fi
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       
     - name: Deploy to Railway
       run: railway up
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        
+    - name: Post-deployment verification
+      run: |
+        echo "Waiting for deployment to complete..."
+        sleep 30
+        
+        # Get the deployed URL
+        RAILWAY_URL=$(railway variables get RAILWAY_STATIC_URL | tr -d '\n')
+        echo "Railway deployed URL: $RAILWAY_URL"
+        
+        # Check health endpoint
+        if [ -n "$RAILWAY_URL" ]; then
+          HEALTH_URL="${RAILWAY_URL}/healthz"
+          echo "Running health check against $HEALTH_URL"
+          
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          
+          until curl -s -f "$HEALTH_URL" || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
+            echo "Health check failed, retrying in 15 seconds..."
+            sleep 15
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+          done
+          
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "Health check failed after $MAX_RETRIES attempts"
+            echo "Deployment may still be in progress. Check Railway dashboard."
+          else
+            echo "Health check successful!"
+          fi
+        else
+          echo "Could not determine Railway URL. Check Railway dashboard for deployment status."
+        fi
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      continue-on-error: true
