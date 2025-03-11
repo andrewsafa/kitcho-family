@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "npm run migrate && npm start"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
@@ -12,6 +12,15 @@ numReplicas = 1
 [deploy.env]
 NODE_ENV = "production"
 
-# Database will be provisioned by Railway
-# You don't need to set DATABASE_URL manually as Railway
-# will inject it automatically when you link a PostgreSQL service
+# Secrets and environment variables
+# Make sure to set these in Railway's dashboard
+# - SESSION_SECRET: Used for secure session management
+
+# PostgreSQL Database Configuration
+# The DATABASE_URL will be automatically injected by Railway
+# when you link a PostgreSQL service to this project
+
+# File System and Static Assets
+# Railway provides an ephemeral filesystem, which means
+# any files written during runtime will not persist after restarts
+# Use external storage services for persistent file storage if needed
