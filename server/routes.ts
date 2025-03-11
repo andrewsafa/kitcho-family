@@ -101,17 +101,84 @@ function requirePartner(
 }
 
 export async function registerRoutes(app: Express) {
-  // Add health check endpoints for Railway deployment
+  // Enhanced health check system
+  
+  // Primary health check endpoint for Railway deployment
   app.get('/healthz', (_req, res) => {
-    res.status(200).json({ status: 'ok', message: 'Server is healthy' });
+    // This is the primary health check that Railway will use
+    // Keep it simple and fast with minimal dependencies
+    try {
+      res.status(200).json({ 
+        status: 'ok', 
+        message: 'Server is healthy',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+        version: '1.0.0'
+      });
+    } catch (error) {
+      console.error('Health check error:', error);
+      res.status(500).json({ 
+        status: 'error', 
+        message: 'Health check failed',
+        timestamp: new Date().toISOString()
+      });
+    }
   });
   
-  // Add root health check as fallback
+  // Root health check as fallback
   app.get('/', (_req, res) => {
-    res.status(200).json({ status: 'ok', message: 'Kitcho Family API is running' });
+    try {
+      res.status(200).json({ 
+        status: 'ok', 
+        message: 'Kitcho Family API is running',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+    } catch (error) {
+      console.error('Root health check error:', error);
+      res.status(500).json({ 
+        status: 'error', 
+        message: 'API health check failed',
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 
-  // Add database health check endpoint
+  // Comprehensive health check endpoint including database status
+  app.get('/api/health', async (_req, res) => {
+    try {
+      // Check database connection
+      const isDbConnected = await storage.testConnection();
+      
+      // Overall system status is determined by database connection
+      const systemStatus = isDbConnected ? 'ok' : 'degraded';
+      const httpStatus = isDbConnected ? 200 : 207; // 207 Multi-Status for partial success
+      
+      res.status(httpStatus).json({
+        status: systemStatus,
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+        environment: process.env.NODE_ENV || 'development',
+        components: {
+          server: { status: 'ok' },
+          database: { 
+            status: isDbConnected ? 'ok' : 'error',
+            message: isDbConnected ? 'Connected' : 'Connection failed'
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Health check error:', error);
+      res.status(500).json({ 
+        status: 'error', 
+        message: 'System health check failed',
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Dedicated database health check endpoint
   app.get('/api/health/db', async (_req, res) => {
     try {
       const isConnected = await storage.testConnection();
@@ -129,6 +196,7 @@ export async function registerRoutes(app: Express) {
         });
       }
     } catch (error) {
+      console.error('Database health check error:', error);
       res.status(500).json({ 
         status: 'error', 
         message: 'Error checking database connection',

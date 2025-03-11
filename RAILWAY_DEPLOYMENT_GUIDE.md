@@ -54,9 +54,16 @@ Railway automatically adds several environment variables:
    - Start Command: `npm run migrate && npm start`
    - Root Directory: `/` (default)
    - Health Check Path: `/healthz` (preferred) or `/` (alternative)
-   - Health Check Timeout: `300` (milliseconds)
+   - Health Check Timeout: `1000` (milliseconds)
 
-These settings are already configured in the `railway.toml` file in your repository. The application includes dedicated health check endpoints at both `/healthz` and `/` to ensure Railway can properly verify that your application is running.
+These settings are already configured in the `railway.toml` file in your repository. The application includes a comprehensive health check system with multiple endpoints:
+
+- `/healthz`: Primary health check endpoint used by Railway (fast, reliable)
+- `/`: Alternative health check endpoint (can be used as fallback)
+- `/api/health`: Comprehensive health check that includes database status
+- `/api/health/db`: Dedicated database connection check
+
+This multi-layered health check system ensures that Railway can properly verify your application's health and provides multiple ways to diagnose issues in production.
 
 ## Step 5: Deploy Your Application
 
@@ -148,7 +155,7 @@ If you encounter issues during deployment:
 If your deployment fails due to health check issues:
 
 1. Verify that the health check path in railway.toml (`/healthz`) matches the actual endpoint in your application
-2. Increase the health check timeout value in railway.toml (currently set to 300ms)
+2. Consider increasing the health check timeout value in railway.toml (currently set to 1000ms)
 3. Check application logs to see if the server is starting properly
 4. Ensure the application is binding to the correct port (Railway sets PORT environment variable)
 
