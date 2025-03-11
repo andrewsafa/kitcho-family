@@ -89,11 +89,7 @@ const upload = multer({
 });
 
 // Middleware to check if a partner is authenticated
-function requirePartner(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) {
+function requirePartner(req: any, res: any, next: any) {
   if (!req.session.partnerId) {
     return res.status(401).json({ message: "Not authenticated" });
   }
@@ -101,91 +97,6 @@ function requirePartner(
 }
 
 export async function registerRoutes(app: Express) {
-  // Enhanced health check system
-  
-  // Primary health check endpoint for Railway deployment
-  app.get('/healthz', (_req, res) => {
-    // This is the primary health check that Railway will use
-    // Must be extremely simple, fast and reliable
-    // DO NOT add any database checks or heavy operations here
-    res.status(200).send('OK');
-  });
-  
-  // Root health check as fallback
-  app.get('/', (_req, res) => {
-    try {
-      res.status(200).json({ 
-        status: 'ok', 
-        message: 'Kitcho Family API is running',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-      });
-    } catch (error) {
-      console.error('Root health check error:', error);
-      res.status(500).json({ 
-        status: 'error', 
-        message: 'API health check failed',
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // Comprehensive health check endpoint including database status
-  
-  // /api/health/db endpoint specifically for database connection checks
-  app.get('/api/health/db', async (_req, res) => {
-    try {
-      const isDbConnected = await storage.testConnection();
-      res.status(isDbConnected ? 200 : 503).json({
-        status: isDbConnected ? 'ok' : 'error',
-        message: isDbConnected ? 'Database connected' : 'Database connection failed'
-      });
-    } catch (error) {
-      console.error('Database health check error:', error);
-      res.status(503).json({
-        status: 'error',
-        message: 'Database connection check failed',
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Comprehensive health check endpoint including database status
-  app.get('/api/health', async (_req, res) => {
-    try {
-      // Check database connection
-      const isDbConnected = await storage.testConnection();
-      
-      // Overall system status is determined by database connection
-      const systemStatus = isDbConnected ? 'ok' : 'degraded';
-      const httpStatus = isDbConnected ? 200 : 207; // 207 Multi-Status for partial success
-      
-      res.status(httpStatus).json({
-        status: systemStatus,
-        timestamp: new Date().toISOString(),
-        version: '1.0.0',
-        environment: process.env.NODE_ENV || 'development',
-        components: {
-          server: { status: 'ok' },
-          database: { 
-            status: isDbConnected ? 'ok' : 'error',
-            message: isDbConnected ? 'Connected' : 'Connection failed'
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Health check error:', error);
-      res.status(500).json({ 
-        status: 'error', 
-        message: 'System health check failed',
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // The database health check endpoint is already defined above
-
   // Set up authentication
   setupAuth(app);
 
@@ -802,9 +713,7 @@ export async function registerRoutes(app: Express) {
 
   app.get("/api/partner/me", requirePartner, async (req, res) => {
     try {
-      // Safe to use non-null assertion here as requirePartner middleware guarantees partnerId exists
-      const partnerId = req.session.partnerId!;
-      const partner = await storage.getPartner(partnerId);
+      const partner = await storage.getPartner(req.session.partnerId);
       if (!partner) {
         return res.status(404).json({ message: "Partner not found" });
       }

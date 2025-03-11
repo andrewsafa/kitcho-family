@@ -6,7 +6,7 @@
       "mobile": "+201225334418",
       "points": 100000,
       "level": "Bronze",
-      "verificationCode": "PP5RM2",
+      "verificationCode": "B8Q3JX",
       "password": "b4ba29161e06ec7e21700e6f24d413c401c7155f750e92b5d19891407ff648020cb7af94187da3f518486621f5d0da1a0c1b777e3f7212871e214cd16f06c381.f9384580017392b606c427cbd3bd5c34"
     },
     {
@@ -15,7 +15,7 @@
       "mobile": "+201004408092",
       "points": 200000,
       "level": "Silver",
-      "verificationCode": "3KB22C",
+      "verificationCode": "S7W269",
       "password": "c21e889187b5ce07fb73db32b6779d2e78e38858638b69a43460ae6925dde0812f7eb339793ae6968ff704aca5a4d0fd79534d95bf39ea627d98c38d8b1f3462.a271e970039417781675c24d68dd9ca6"
     }
   ],
@@ -35,7 +35,40 @@
       "timestamp": "2025-03-10T20:27:49.345Z"
     }
   ],
-  "benefits": [],
+  "benefits": [
+    {
+      "id": 40,
+      "level": "Bronze",
+      "benefit": "خصم 4% علي منتجات بوش",
+      "active": true,
+      "lastUpdated": "2025-03-11T14:53:50.072Z",
+      "imagePath": null
+    },
+    {
+      "id": 41,
+      "level": "Silver",
+      "benefit": "خصم 5% علي منتجات بوش",
+      "active": true,
+      "lastUpdated": "2025-03-11T14:54:01.056Z",
+      "imagePath": null
+    },
+    {
+      "id": 42,
+      "level": "Gold",
+      "benefit": "خصم 6% علي منتجات بوش",
+      "active": true,
+      "lastUpdated": "2025-03-11T14:54:19.388Z",
+      "imagePath": null
+    },
+    {
+      "id": 43,
+      "level": "Diamond",
+      "benefit": "خصم 7% علي منتجات بوش",
+      "active": true,
+      "lastUpdated": "2025-03-11T14:54:34.278Z",
+      "imagePath": null
+    }
+  ],
   "events": [
     {
       "id": 3,
